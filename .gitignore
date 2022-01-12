@@ -21,3 +21,21 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+/.idea/*
+/target/*
+/bin
+/.classpath
+/.settings/*
+.project
+/azure-maven-archetypes/
+/azure-maven-plugins/
+/ciTestDir/*
+/target/
+/Azure.Functions.Cli/*
+/azure-functions-java-worker/
+
+#IDE
+*.iml
+
+#OSX
+.DS_Store
