@@ -5,6 +5,7 @@ trigger:
   branches:
     include:
       - dev
+      - shreyasg/pipeline
 pr:
   branches:
     include:
