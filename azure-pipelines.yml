@@ -31,7 +31,6 @@ jobs:
     - pwsh: '& .\build.ps1'
 
   - job: "Upload Jar to Release container"
-    condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
     pool:
       name: '1ES-Hosted-AzFunc'
       demands:
@@ -43,5 +42,3 @@ jobs:
         inputs:
           inlineScript: |
             echo "Hello world"
-#            azcopy -login --tenant-id="%USER_TENANT_ID%"
-#            azcopy -version
