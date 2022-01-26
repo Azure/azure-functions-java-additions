@@ -40,7 +40,7 @@ jobs:
       - task: CmdLine@2
         displayName: Az Copy
         env:
-          TENANT_ID: ${{ secrets.USER_TENANT_ID }}
+          TENANT_ID: ${{ USER_TENANT_ID }}
         inputs:
           inlineScript: |
             azcopy -login --tenant-id="%TENANT_ID%"
