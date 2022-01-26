@@ -37,9 +37,12 @@ jobs:
       demands:
         - ImageOverride -equals MMS2019TLS
     steps:
-      - task: CmdLine@2
-        condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
-        displayName: Az Copy
-      - script: |
-          mvn clean install -Dgpg.skip
-          azcopy login --tenant-id="%USER_TENANT_ID%"
+    - task: NuGetToolInstaller@1
+      condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
+      inputs:
+        checkLatest: true
+    - pwsh: |
+        Write-Host "Java_HOME: $JAVA_HOME"
+        Get-Command mvn
+      displayName: 'Publish artifact to container'
+    - pwsh: '& .\publish.ps1'
