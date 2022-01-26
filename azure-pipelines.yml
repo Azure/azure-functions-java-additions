@@ -5,7 +5,7 @@ trigger:
   branches:
     include:
       - dev
-      - shreyasg/pipeline #release
+      - shreyasg/release-tag #release
 pr:
   branches:
     include:
@@ -31,7 +31,7 @@ jobs:
     - pwsh: '& .\build.ps1'
 
   - job: "Upload Jar to Release container"
-    condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/pipeline') #eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release')
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
     pool:
       name: '1ES-Hosted-AzFunc'
       demands:
