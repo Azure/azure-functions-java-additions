@@ -5,7 +5,7 @@ trigger:
   branches:
     include:
       - dev
-      - shreyasg/release-tag #release
+      - shreyasg/release-tag
 pr:
   branches:
     include:
