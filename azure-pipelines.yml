@@ -31,17 +31,17 @@ jobs:
     - pwsh: '& .\build.ps1'
 
   - job: "Upload_Jar_to_Release_container"
-      pool:
-        name: '1ES-Hosted-AzFunc'
-        demands:
-          - ImageOverride -equals MMS2019TLS
-      steps:
-        - task: CmdLine@2
-          condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
-          displayName: Az Copy
-          env:
-            TENANT_ID: ${{ USER_TENANT_ID }}
-          inputs:
-            inlineScript: |
-              azcopy -login --tenant-id="%TENANT_ID%"
-              azcopy -version
+    pool:
+      name: '1ES-Hosted-AzFunc'
+      demands:
+        - ImageOverride -equals MMS2019TLS
+    steps:
+      - task: CmdLine@2
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
+        displayName: Az Copy
+        env:
+          TENANT_ID: ${{ USER_TENANT_ID }}
+        inputs:
+          inlineScript: |
+            azcopy -login --tenant-id="%TENANT_ID%"
+            azcopy -version
