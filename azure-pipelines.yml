@@ -36,10 +36,12 @@ jobs:
       name: '1ES-Hosted-AzFunc'
       demands:
         - ImageOverride -equals MMS2019TLS
+
     steps:
       - task: CmdLine@2
         displayName: Az Copy
         inputs:
           inlineScript: |
-            azcopy -login --tenant-id="%USER_TENANT_ID%"
-            azcopy -version
+            echo "Hello world"
+#            azcopy -login --tenant-id="%USER_TENANT_ID%"
+#            azcopy -version
