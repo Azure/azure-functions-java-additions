@@ -5,7 +5,7 @@ trigger:
   branches:
     include:
       - dev
-      - shreyasg/pipeline
+      - shreyasg/pipeline #release
 pr:
   branches:
     include:
@@ -31,10 +31,17 @@ jobs:
     - pwsh: '& .\build.ps1'
 
   - job: "Upload Jar to Release container"
-    condition: startsWith(variables['build.sourceBranch'], 'refs/tags/')
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/pipeline') #eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release')
     pool:
       name: '1ES-Hosted-AzFunc'
       demands:
         - ImageOverride -equals MMS2019TLS
     steps:
       - task: CmdLine@2
+        displayName: Az Copy
+        env:
+          TENANT_ID: ${{ secrets.USER_TENANT_ID }}
+        inputs:
+          inlineScript: |
+            azcopy -login --tenant-id="%TENANT_ID%"
+            azcopy -version
