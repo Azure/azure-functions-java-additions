@@ -14,21 +14,21 @@ pr:
 
 
 jobs:
-  - job: "Build_And_Test_Java_Library_Windows"
-    pool:
-      name: '1ES-Hosted-AzFunc'
-      demands:
-        - ImageOverride -equals MMS2019TLS
-
-    steps:
-    - task: NuGetToolInstaller@1
-      inputs:
-        checkLatest: true
-    - pwsh: |
-        Write-Host "Java_HOME: $JAVA_HOME"
-        Get-Command mvn
-      displayName: 'Check Maven is installed'
-    - pwsh: '& .\build.ps1'
+#  - job: "Build_And_Test_Java_Library_Windows"
+#    pool:
+#      name: '1ES-Hosted-AzFunc'
+#      demands:
+#        - ImageOverride -equals MMS2019TLS
+#
+#    steps:
+#    - task: NuGetToolInstaller@1
+#      inputs:
+#        checkLatest: true
+#    - pwsh: |
+#        Write-Host "Java_HOME: $JAVA_HOME"
+#        Get-Command mvn
+#      displayName: 'Check Maven is installed'
+#    - pwsh: '& .\build.ps1'
 
   - job: "Upload_Jar_to_Release_container"
     dependsOn: Build_And_Test_Java_Library_Windows
@@ -41,5 +41,6 @@ jobs:
         condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
         displayName: Az Copy
       - script: |
-          azcopy -login --tenant-id="%USER_TENANT_ID%"
-          azcopy -version
+          mvn clean install -Dgpg.skip
+          azcopy login --tenant-id="%USER_TENANT_ID%"
+          
