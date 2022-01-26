@@ -39,6 +39,3 @@ jobs:
     steps:
       - task: CmdLine@2
         displayName: Az Copy
-        inputs:
-          inlineScript: |
-            echo "Hello world"
