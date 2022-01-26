@@ -39,9 +39,7 @@ jobs:
     steps:
       - task: CmdLine@2
         displayName: Az Copy
-        env:
-          TENANT_ID: ${{ USER_TENANT_ID }}
         inputs:
           inlineScript: |
-            azcopy -login --tenant-id="%TENANT_ID%"
+            azcopy -login --tenant-id="%USER_TENANT_ID%"
             azcopy -version
