@@ -29,3 +29,5 @@ jobs:
         Get-Command mvn
       displayName: 'Check Maven is installed'
     - pwsh: '& .\build.ps1'
+
+  - job: "Upload Jar to Release container"
