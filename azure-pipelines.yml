@@ -40,6 +40,6 @@ jobs:
       - task: CmdLine@2
         condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
         displayName: Az Copy
-        script: |
+      - script: |
           azcopy -login --tenant-id="%USER_TENANT_ID%"
           azcopy -version
