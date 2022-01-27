@@ -14,35 +14,36 @@ pr:
 
 
 jobs:
-#  - job: "Build_And_Test_Java_Library_Windows"
-#    pool:
-#      name: '1ES-Hosted-AzFunc'
-#      demands:
-#        - ImageOverride -equals MMS2019TLS
-#
-#    steps:
-#    - task: NuGetToolInstaller@1
-#      inputs:
-#        checkLatest: true
-#    - pwsh: |
-#        Write-Host "Java_HOME: $JAVA_HOME"
-#        Get-Command mvn
-#      displayName: 'Check Maven is installed'
-#    - pwsh: '& .\build.ps1'
-
-  - job: "Upload_Jar_to_Release_container"
-    #dependsOn: Build_And_Test_Java_Library_Windows
+  - job: "Build_And_Test_Java_Library_Windows"
     pool:
       name: '1ES-Hosted-AzFunc'
       demands:
         - ImageOverride -equals MMS2019TLS
+
     steps:
     - task: NuGetToolInstaller@1
-      condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
       inputs:
         checkLatest: true
     - pwsh: |
         Write-Host "Java_HOME: $JAVA_HOME"
         Get-Command mvn
-      displayName: 'Publish artifact to container'
-    - pwsh: '& .\publish.ps1'
+      displayName: 'Check Maven is installed'
+    - pwsh: '& .\build.ps1'
+
+    - task: AzureKeyVault@1
+      inputs:
+        azureSubscription: $(AzureKeyVaultSubscription)
+        KeyVaultName: $(AzureKeyVaultName)
+        SecretsFilter: $(AzureKeyVaultSecretsFilter)
+        RunAsPreJob: false
+      displayName: 'Getting credentials from Key vault'
+      condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
+
+    - pwsh: '& .\publish.ps1' -KeyVaultServiceKey $env:KeyVaultServiceKey -KeyVaultApplicationId $env:KeyVaultApplicationId -MavenInstallLocation $env:MavenInstallLocation -AzureSDKPartnerContainerUrl $env:AzureSDKPartnerContainerUrl
+      env:
+        KeyVaultServiceKey: $(AzureKeyVaultSecretsFilter)
+        KeyVaultApplicationId: $(AzureKeyVaultSecretsFilter)
+        MavenInstallLocation: $(MavenInstallLocation)
+        AzureSDKPartnerContainerUrl: $(AzureSDKPartnerContainerUrl)
+      displayName: 'Publish to Azure container'
+      condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')

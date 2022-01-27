@@ -1,3 +1,25 @@
+param (
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [System.String]
+    $KeyVaultServiceKey,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [System.String]
+    $KeyVaultApplicationId,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [System.String]
+    $MavenInstallLocation,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [System.String]
+    $AzureSDKPartnerContainerUrl
+)
+
 # A function that checks exit codes and fails script if an error is found
 function StopOnFailedExecution {
   if ($LastExitCode)
@@ -7,12 +29,10 @@ function StopOnFailedExecution {
 }
 
 # Build and publish azure-functions--core-library
-Write-Host "Build and install azure-functions-java-core-library"
-cmd.exe /c '.\mvnBuild.bat'
-StopOnFailedExecution
+Write-Host "Publish azure-functions-java-core-library artifacts to Azure container"
 $coreLibraryPom = Get-Content "pom.xml" -Raw
 $coreLibraryPom -match "<version>(.*)</version>"
-$coreLibraryVersion = $matches[1]
-Write-Host "coreLibraryVersion: " $coreLibraryVersion
-cmd.exe /c '.\publishToContainer.bat' $coreLibraryVersion
+$CoreLibraryVersion = $matches[1]
+Write-Host "CoreLibraryVersion: " $CoreLibraryVersion
+cmd.exe /c '.\publishToContainer.bat' $coreLibraryVersion $KeyVaultServiceKey $KeyVaultApplicationId $MavenInstallLocation $AzureSDKPartnerContainerUrl
 StopOnFailedExecution
