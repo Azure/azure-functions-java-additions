@@ -24,11 +24,14 @@ jobs:
     - task: NuGetToolInstaller@1
       inputs:
         checkLatest: true
+    
     - pwsh: |
         Write-Host "Java_HOME: $JAVA_HOME"
         Get-Command mvn
       displayName: 'Check Maven is installed'
+    
     - pwsh: '& .\build.ps1'
+      displayName: 'Build azure functions java core library'
 
     - task: AzureKeyVault@1
       inputs:
@@ -39,7 +42,8 @@ jobs:
       displayName: 'Getting credentials from Key vault'
       condition: eq(variables['Build.SourceBranch'], 'refs/heads/shreyasg/release-tag') #eq(variables['Build.SourceBranch'], 'refs/heads/release')
 
-    - pwsh: '& .\publish.ps1' -KeyVaultServiceKey $env:KeyVaultServiceKey -KeyVaultApplicationId $env:KeyVaultApplicationId -MavenInstallLocation $env:MavenInstallLocation -AzureSDKPartnerContainerUrl $env:AzureSDKPartnerContainerUrl
+    - pwsh: |
+        '& .\publish.ps1' -KeyVaultServiceKey $env:KeyVaultServiceKey -KeyVaultApplicationId $env:KeyVaultApplicationId -MavenInstallLocation $env:MavenInstallLocation -AzureSDKPartnerContainerUrl $env:AzureSDKPartnerContainerUrl
       env:
         KeyVaultServiceKey: $(AzureKeyVaultSecretsFilter)
         KeyVaultApplicationId: $(AzureKeyVaultSecretsFilter)
