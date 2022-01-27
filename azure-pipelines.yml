@@ -46,7 +46,7 @@ jobs:
         '& .\publish.ps1' -KeyVaultServiceKey $env:KeyVaultServiceKey -KeyVaultApplicationId $env:KeyVaultApplicationId -MavenInstallLocation $env:MavenInstallLocation -AzureSDKPartnerContainerUrl $env:AzureSDKPartnerContainerUrl
       env:
         KeyVaultServiceKey: $(AzureKeyVaultSecretsFilter)
-        KeyVaultApplicationId: $(AzureKeyVaultSecretsFilter)
+        KeyVaultApplicationId: $(KeyVaultApplicationId)
         MavenInstallLocation: $(MavenInstallLocation)
         AzureSDKPartnerContainerUrl: $(AzureSDKPartnerContainerUrl)
       displayName: 'Publish to Azure container'
