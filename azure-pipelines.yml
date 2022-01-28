@@ -33,9 +33,9 @@ jobs:
     - pwsh: '& .\build.ps1'
       displayName: 'Build azure functions java core library'
 
-    - task: AzureKeyVault@1
+    - task: AzureKeyVault@2
       inputs:
-        azureSubscription: $(AzureKeyVaultSubscription)
+        connectedServiceName: $(AzureKeyVaultSubscription)
         KeyVaultName: $(AzureKeyVaultName)
         SecretsFilter: $(AzureKeyVaultSecretsFilter)
         RunAsPreJob: false
