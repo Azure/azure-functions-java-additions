@@ -13,8 +13,9 @@ package com.microsoft.azure.functions;
  * {https://github.com/Azure/azure-functions-java-library/blob/dev/src/main/java/com/microsoft/azure/functions/annotation/HttpTrigger.java}
  * @see HttpRequestMessage
  * @since 1.0.0
+ * @param <T> The type of the body object that will be sent as a part of the HTTP Response
  */
-public interface HttpResponseMessage {
+public interface HttpResponseMessage<T> {
 
     /**
      * Returns the HTTP status code set on the HttpResponseMessage instance.
@@ -45,12 +46,13 @@ public interface HttpResponseMessage {
      * 
      * @return the body of the HTTP response.
      */
-    Object getBody();
+    T getBody();
     
     /**
-     * A builder to create an instance of HttpResponseMessage 
+     * A builder to create an instance of HttpResponseMessage
+     * @param <T> the type of the body object that will be sent as a part of the HTTP Response
      */
-    public interface Builder {
+    interface Builder<T> {
 
         /**
          * Sets the status code to be used in the HttpResponseMessage object.
@@ -61,7 +63,7 @@ public interface HttpResponseMessage {
          * @param status An HTTP status code representing the outcome of the HTTP request.
          * @return this builder
          */
-        Builder status(HttpStatusType status);
+        Builder<T> status(HttpStatusType status);
 
         /**
          * Adds a (key, value) header to the response.
@@ -70,7 +72,7 @@ public interface HttpResponseMessage {
          * @param value The value of the header value.
          * @return this builder
          */
-        Builder header(String key, String value);
+        Builder<T> header(String key, String value);
 
         /**
          * Sets the body of the HTTP response.
@@ -78,13 +80,13 @@ public interface HttpResponseMessage {
          * @param body The body of the HTTP response
          * @return this builder
          */
-        Builder body(Object body);
+        Builder<T> body(T body);
 
         /**
          * Creates an instance of HttpMessageResponse with the values configured in this builder.
          * 
          * @return an HttpMessageResponse object
          */
-        HttpResponseMessage build();
+        HttpResponseMessage<T> build();
     }
 }
