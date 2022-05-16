@@ -9,19 +9,19 @@ import static junit.framework.TestCase.*;
  */
 public class HttpStatusTest {
     @Test
-    public void set_custom_httpstatuscode() {
+    public void test_settingCustomStatusCode() {
         HttpStatusType customHttpStatus = HttpStatusType.custom(209);
-        assertTrue(customHttpStatus.value() == 209);
+        assertEquals(209, customHttpStatus.value());
     }
 
     @Test
-    public void set_standard_httpstatuscode() {
+    public void test_standardStatusCode() {
         HttpStatusType customHttpStatus = HttpStatus.OK;
-        assertTrue(customHttpStatus.value() == 200);
+        assertEquals(200, customHttpStatus.value());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void set_invalid_httpstatuscode() {
+    public void test_invalidStatusCode_throwsException() {
         HttpStatusType.custom(-100);
     }
 }

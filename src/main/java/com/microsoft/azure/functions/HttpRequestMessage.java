@@ -64,8 +64,9 @@ public interface HttpRequestMessage<T> {
      * @param status The HTTP status code to return to the caller of the function.
      * @return An {@link HttpResponseMessage.Builder} instance containing the provided status and
      *         empty body.
+     * @param <R> The type of the body object that will be sent as a part of the HTTP Response
      */
-    HttpResponseMessage.Builder createResponseBuilder(HttpStatus status);
+    <R> HttpResponseMessage.Builder<R> createResponseBuilder(HttpStatus status);
 
     /**
      * Returns a {@link HttpResponseMessage.Builder} instance to build a HttpResponseMessage with
@@ -74,7 +75,8 @@ public interface HttpRequestMessage<T> {
      * @param status The HTTP status code to return to the caller of the function.
      * @return An {@link HttpResponseMessage.Builder} instance containing the provided status and
      *         empty body.
+     * @param <R> The type of the body object that will be sent as a part of the HTTP Response
      */
-    HttpResponseMessage.Builder createResponseBuilder(HttpStatusType status);
+    <R> HttpResponseMessage.Builder<R> createResponseBuilder(HttpStatusType status);
 
 }
