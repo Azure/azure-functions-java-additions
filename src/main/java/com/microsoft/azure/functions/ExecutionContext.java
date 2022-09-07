@@ -6,6 +6,8 @@
 
 package com.microsoft.azure.functions;
 
+import java.lang.reflect.Parameter;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -50,5 +52,15 @@ public interface ExecutionContext {
     default RetryContext getRetryContext() {
         return null;
     }
+
+    Object getReturnValue();
+
+    Map<String, Parameter> getParamInfoMap();
+
+    void setInputArgument(String key, Object value);
+
+    Map<String, String> getArgumentPayloadMap();
+
+    void setImplicitOutput(Object value);
 }
 
