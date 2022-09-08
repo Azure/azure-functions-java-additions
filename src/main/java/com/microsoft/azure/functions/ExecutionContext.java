@@ -53,14 +53,14 @@ public interface ExecutionContext {
         return null;
     }
 
+    Map<String, Parameter> getParameterMap();
+
+    Map<String, String> getParameterPayloadMap();
+
+    void setMiddlewareInput(String key, Object value);
+
     Object getReturnValue();
 
-    Map<String, Parameter> getParamInfoMap();
-
-    void setInputArgument(String key, Object value);
-
-    Map<String, String> getArgumentPayloadMap();
-
-    void setImplicitOutput(Object value);
+    void setMiddlewareOutput(Object value);
 }
 
