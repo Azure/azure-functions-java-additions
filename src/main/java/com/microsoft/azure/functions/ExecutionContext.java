@@ -61,6 +61,6 @@ public interface ExecutionContext {
 
     Map<String, String> getArgumentPayloadMap();
 
-    void setImplicitOutput(Object value);
+    void setMiddlewareOutput(Object value);
 }
 
