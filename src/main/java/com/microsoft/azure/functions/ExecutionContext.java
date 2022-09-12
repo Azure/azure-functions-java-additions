@@ -62,5 +62,9 @@ public interface ExecutionContext {
     Object getReturnValue();
 
     void setMiddlewareOutput(Object value);
+
+    void setFunctionInstance(Object functionInstance);
+
+    Class<?> getContainingClass();
 }
 
