@@ -5,8 +5,6 @@
  */
 package com.microsoft.azure.functions.middleware;
 
-import com.microsoft.azure.functions.ExecutionContext;
-
 public interface FunctionWorkerChain {
-    void doNext(ExecutionContext context) throws Exception;
+    void doNext(MiddlewareExecutionContext context) throws Exception;
 }

@@ -6,8 +6,6 @@
 
 package com.microsoft.azure.functions;
 
-import java.lang.reflect.Parameter;
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -52,19 +50,5 @@ public interface ExecutionContext {
     default RetryContext getRetryContext() {
         return null;
     }
-
-    Map<String, Parameter> getParameterMap();
-
-    Map<String, String> getParameterPayloadMap();
-
-    void setMiddlewareInput(String key, Object value);
-
-    Object getReturnValue();
-
-    void setMiddlewareOutput(Object value);
-
-    void setFunctionInstance(Object functionInstance);
-
-    Class<?> getContainingClass();
 }
 
