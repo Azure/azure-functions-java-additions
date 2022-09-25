@@ -7,10 +7,15 @@ package com.microsoft.azure.functions.middleware;
 
 import com.microsoft.azure.functions.internal.MiddlewareContext;
 
-public interface FunctionWorkerChain {
+/**
+ * The function middleware chain.
+ *
+ * @since 1.1.0
+ */
+public interface FunctionMiddlewareChain {
     /**
-     * This method invoke next middleware, usually used at the end of middleware to invoke next middleware in the chain
-     * @param context - Execution context that pass to along middlewares.
+     * Invokes next middleware, usually used at the end of middleware to invoke next middleware in the middleware chain
+     * @param context - Execution context that pass along middleware chain.
      */
     void doNext(MiddlewareContext context) throws Exception;
 }
