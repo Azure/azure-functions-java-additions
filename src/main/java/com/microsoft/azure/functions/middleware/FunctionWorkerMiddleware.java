@@ -14,9 +14,10 @@ import com.microsoft.azure.functions.internal.MiddlewareContext;
  */
 public interface FunctionWorkerMiddleware {
     /**
-     * This method contains middleware logics.
-     * @param context - Execution context that pass along middleware chain.
+     * Middlewares will override this method to include their own logics.
+     * @param context - Execution context that pass along middleware chain
      * @param next - Function middleware chain {@link FunctionMiddlewareChain}
+     * @throws Exception - Any exception that is thrown out in next middleware
      */
     void invoke(MiddlewareContext context, FunctionMiddlewareChain next) throws Exception;
 }

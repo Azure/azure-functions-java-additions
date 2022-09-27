@@ -18,37 +18,39 @@ import java.util.Optional;
  */
 public interface MiddlewareContext extends ExecutionContext {
     /**
-     * Returns the name of parameter defined in customer function. The input name is the simple name of desired trigger class.
-     * @param name - The simple name of desired trigger.
-     * @return The name of parameter defined in customer function.
+     * Returns the name of parameter defined in customer function.
+     * The input is the simple class name of target annotation.
+     * @param annotationSimpleClassName - The simple class name of target annotation
+     * @return The name of parameter defined in customer function
      */
-    Optional<String> getParameterName(String name);
+    Optional<String> getParameterName(String annotationSimpleClassName);
 
     /**
-     * Returns corresponding parameter payload sent from host by the given the parameter name. The return type is Object
-     * but the real type is String. Make it return Object to avoid break this API in the future.
+     * Returns corresponding parameter value sent from host by the given the parameter name.
+     * The return type is Object but the real type is String (currently only support get String type,
+     * planning to support other types in the future.)
+     * Make it return Object to avoid break this API in the future.
      * @param name - The name of parameter
-     * @return An object which will be String type that represents parameter payload of customer function.
+     * @return An object which will be String type that represents parameter value of customer function
      */
-    Object getParameterPayloadByName(String name);
+    Object getParameterValue(String name);
 
     /**
-     * Updates the parameter payload by parameter name. This payload will be the actual parameter payload
+     * Updates the parameter value by parameter name. It will be the actual parameter value
      * used when invoke customer function. This API give middleware ability to update function input.
-     * @param key - The name of parameter to be updated
+     * @param name - The name of parameter to be updated
      * @param value - The value of parameter to be updated
      */
-    void updateParameterPayloadByName(String key, Object value);
+    void updateParameterValue(String name, Object value);
 
     /**
      * Returns the return value from customer function invocation.
-     * @return An object that is the return value of customer functions.
+     * @return An object that is the return value of customer function
      */
     Object getReturnValue();
 
     /**
-     * Updates the return value that will eventually be sent back to host.
-     * @param value - Middleware output value that will eventually be sent back to host
+     * Updates the return value from customer function invocation.
      */
-    void setMiddlewareOutput(Object value);
+    void setReturnValue(Object returnValue);
 }

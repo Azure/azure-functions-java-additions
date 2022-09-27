@@ -14,8 +14,9 @@ import com.microsoft.azure.functions.internal.MiddlewareContext;
  */
 public interface FunctionMiddlewareChain {
     /**
-     * Invokes next middleware, usually used at the end of middleware to invoke next middleware in the middleware chain
-     * @param context - Execution context that pass along middleware chain.
+     * Invokes next middleware, usually used at the end of middleware to invoke next middleware in the middleware chain.
+     * @param context - Execution context that pass along middleware chain
+     * @throws Exception - Any exception that happen along middleware chain
      */
     void doNext(MiddlewareContext context) throws Exception;
 }
