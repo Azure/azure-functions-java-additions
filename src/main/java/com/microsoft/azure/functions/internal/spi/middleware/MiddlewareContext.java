@@ -54,5 +54,5 @@ public interface MiddlewareContext extends ExecutionContext {
      * Updates the return value from customer function invocation.
      * @param returnValue value that will be updated as function return value.
      */
-    void setReturnValue(Object returnValue);
+    void updateReturnValue(Object returnValue);
 }
