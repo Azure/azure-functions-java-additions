@@ -3,21 +3,20 @@
  * Licensed under the MIT License. See License.txt in the project root for
  * license information.
  */
-package com.microsoft.azure.functions.middleware;
-
-import com.microsoft.azure.functions.internal.MiddlewareContext;
+package com.microsoft.azure.functions.internal.spi.middleware;
 
 /**
  * This interface is implemented by middlewares to include middleware core logics.
  *
- * @since 1.1.0
+ * <p>This class is internal and is hence not for public use at this time. Its APIs are unstable and can change
+ * at any time.
  */
-public interface FunctionWorkerMiddleware {
+public interface Middleware {
     /**
      * Middlewares will override this method to include their own logics.
      * @param context execution context that pass along middleware chain
-     * @param next function middleware chain {@link FunctionMiddlewareChain}
+     * @param chain middleware chain {@link MiddlewareChain}
      * @throws Exception any exception that is thrown out in next middleware
      */
-    void invoke(MiddlewareContext context, FunctionMiddlewareChain next) throws Exception;
+    void invoke(MiddlewareContext context, MiddlewareChain chain) throws Exception;
 }

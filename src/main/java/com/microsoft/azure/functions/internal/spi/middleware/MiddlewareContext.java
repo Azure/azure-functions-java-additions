@@ -4,16 +4,14 @@
  * license information.
  */
 
-package com.microsoft.azure.functions.internal;
+package com.microsoft.azure.functions.internal.spi.middleware;
 
 import com.microsoft.azure.functions.ExecutionContext;
-
-import java.util.Optional;
 
 /**
  * Middleware Execution Context
  *
- * <p>This class is internal and is hence not for public use. Its APIs are unstable and can change
+ * <p>This class is internal and is hence not for public use at this time. Its APIs are unstable and can change
  * at any time.
  */
 public interface MiddlewareContext extends ExecutionContext {
@@ -23,7 +21,8 @@ public interface MiddlewareContext extends ExecutionContext {
      * @param annotationSimpleClassName the simple class name of target annotation
      * @return the name of parameter defined in customer function
      */
-    Optional<String> getParameterName(String annotationSimpleClassName);
+    //TODO: @Nullable
+    String getParameterName(String annotationSimpleClassName);
 
     /**
      * Returns corresponding parameter value sent from host by the given the parameter name.
@@ -33,6 +32,7 @@ public interface MiddlewareContext extends ExecutionContext {
      * @param name the name of parameter
      * @return an object which will be String type that represents parameter value of customer function
      */
+    //TODO: @Nullable
     Object getParameterValue(String name);
 
     /**
@@ -47,6 +47,7 @@ public interface MiddlewareContext extends ExecutionContext {
      * Returns the return value from customer function invocation.
      * @return an object that is the return value of customer function
      */
+    //TODO: @Nullable
     Object getReturnValue();
 
     /**
