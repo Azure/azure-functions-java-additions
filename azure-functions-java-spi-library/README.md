@@ -1,14 +1,8 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
-|Branch|Status|
-|---|---|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=dev)|
-
 # Extend library for Azure Java Functions
-This repo contains two extend library for building Azure Java Functions. 
-* [azure-functions-java-core-library](https://github.com/Microsoft/maven-java-parent)
-* [azure-functions-java-spi-library](https://github.com/Microsoft/maven-java-parent)
+This repo contains spi library for building Azure Java Functions. **This library should not be used when build your function app.** 
+This library provide hooks to third parties supporting them to interact with function runtime during function invocation process. 
 
 For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
 

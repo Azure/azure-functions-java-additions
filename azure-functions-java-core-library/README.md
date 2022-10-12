@@ -1,14 +1,9 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
-|Branch|Status|
-|---|---|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=dev)|
-
-# Extend library for Azure Java Functions
-This repo contains two extend library for building Azure Java Functions. 
-* [azure-functions-java-core-library](https://github.com/Microsoft/maven-java-parent)
-* [azure-functions-java-spi-library](https://github.com/Microsoft/maven-java-parent)
+# Core library for Azure Java Functions
+This repo contains core library for building Azure Java Functions. `azure-functions-java-core-library` contains base class for building Azure Java Functions. 
+However, You don't need to include `azure-functions-java-core-library` as a dependency when you build your function app, because it comes with [azure-functions-java-library](https://github.com/Azure/azure-functions-java-library)
+You only need to include `azure-functions-java-library` as your function app dependency then you will have access to all class in `azure-functions-core-library`
 
 For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
 
