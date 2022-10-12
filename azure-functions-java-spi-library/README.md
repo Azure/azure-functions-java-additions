@@ -3,6 +3,7 @@
 # Extend library for Azure Java Functions
 This repo contains spi library for building Azure Java Functions. **This library should not be used when build your function app.** 
 This library provide hooks to third parties supporting them to interact with function runtime during function invocation process. 
+**_This library should be used with scope as `provided`, because customer should not have transitive dependency on it_**
 
 For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
 
