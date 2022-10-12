@@ -15,8 +15,8 @@ StopOnFailedExecution
 Pop-Location -StackName "libraryDir"
 $archetypePom = Get-Content ".\azure-maven-archetypes\azure-functions-archetype\pom.xml" -Raw
 $archetypePom -match "<version>(.*)</version>"
-$atchetypeVersion = $matches[1]
-Write-Host "atchetypeVersion: " $atchetypeVersion
+$archetypeVersion = $matches[1]
+Write-Host "archetypeVersion: " $archetypeVersion
 
 # Clone and install function maven plugin
 git clone https://github.com/Microsoft/azure-maven-plugins.git -b develop
@@ -44,7 +44,7 @@ StopOnFailedExecution
 Write-Host "Build and install azure-functions-java-core-library"
 cmd.exe /c '.\mvnBuild.bat'
 StopOnFailedExecution
-$coreLibraryPom = Get-Content "pom.xml" -Raw
+$coreLibraryPom = Get-Content "azure-functions-java-core-library\pom.xml" -Raw
 $coreLibraryPom -match "<version>(.*)</version>"
 $coreLibraryVersion = $matches[1]
 Write-Host "coreLibraryVersion: " $coreLibraryVersion
