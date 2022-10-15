@@ -24,7 +24,8 @@ Please see for details on parent POM https://github.com/Microsoft/maven-java-par
 
 ### Sample
 
-For an example of a HttpTrigger Azure function in Java please refer to [HttpTrigger sample](https://github.com/Azure/azure-functions-java-library#sample)
+For samples of Azure function in Java please refer to [Azure Function Java Samples](https://github.com/Azure/azure-functions-java-library#sample)
+and [Azure Functions Java Samples Repository](https://github.com/Azure-Samples/azure-functions-samples-java)
 
 ### License
 

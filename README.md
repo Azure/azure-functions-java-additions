@@ -25,17 +25,12 @@ Please see for details on Parent POM https://github.com/Microsoft/maven-java-par
 
 ## Summary
 
-Azure Functions is a solution for easily running small pieces of code, or "functions," in the cloud. You can write just the code you need for the problem at hand, without worrying about a whole application or the infrastructure to run it. Functions can make development even more productive.Pay only for the time your code runs and trust Azure to scale as needed. Azure Functions lets you develop [serverless](https://azure.microsoft.com/en-us/solutions/serverless/) applications on Microsoft Azure.
-
-Azure Functions supports triggers, which are ways to start execution of your code, and bindings, which are ways to simplify coding for input and output data. A function should be a stateless method to process input and produce output. Although you are allowed to write instance methods, your function must not depend on any instance fields of the class. You need to make sure all the function methods are `public` accessible and method with annotation @FunctionName is unique as that defines the entry for the function.
-
-A deployable unit is an uber JAR containing one or more functions (see below), and a JSON file with the list of functions and triggers definitions, deployed to Azure Functions. The JAR can be created in many ways, although we recommend [Azure Functions Maven Plugin](https://docs.microsoft.com/en-us/java/api/overview/azure/maven/azure-functions-maven-plugin/readme), as it provides templates to get you started with key scenarios.
-
-All the input and output bindings can be defined in `function.json` (not recommended), or in the Java method by using annotations (recommended). All the types and annotations used in this document are included in the [azure-functions-java-library](https://github.com/Azure/azure-functions-java-library) package.
+[Azure Functions Summary](https://github.com/Azure/azure-functions-java-library#summary)
 
 ### Sample
 
-For an example of a HttpTrigger Azure function in Java please refer to [HttpTrigger sample](https://github.com/Azure/azure-functions-java-library#sample)
+For samples of Azure function in Java please refer to [Azure Function Java Samples](https://github.com/Azure/azure-functions-java-library#sample)
+and [Azure Functions Java Samples Repository](https://github.com/Azure-Samples/azure-functions-samples-java)
 
 ### License
 
