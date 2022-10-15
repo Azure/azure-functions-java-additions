@@ -40,14 +40,18 @@ if ([string]::IsNullOrEmpty($pluginVersion))
 StopOnFailedExecution     
 
 
-# Get azure-functions-core-library
-Write-Host "Build and install azure-functions-java-core-library"
+# Get azure-functions-core-library and azure-functions-spi
+Write-Host "Build and install azure-functions-java-core-library and azure-functions-spi"
 cmd.exe /c '.\mvnBuild.bat'
 StopOnFailedExecution
 $coreLibraryPom = Get-Content "azure-functions-java-core-library\pom.xml" -Raw
 $coreLibraryPom -match "<version>(.*)</version>"
 $coreLibraryVersion = $matches[1]
 Write-Host "coreLibraryVersion: " $coreLibraryVersion
+$spiLibraryPom = Get-Content "azure-functions-java-spi\pom.xml" -Raw
+$spiLibraryPom -match "<version>(.*)</version>"
+$spiLibraryVersion = $matches[1]
+Write-Host "spiLibraryVersion: " $spiLibraryVersion
 
 # Get azure-functions-library
 git clone https://github.com/Azure/azure-functions-java-library.git -b dev

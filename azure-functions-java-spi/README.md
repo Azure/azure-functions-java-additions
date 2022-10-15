@@ -1,9 +1,9 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
-# Core library for Azure Java Functions
-This repo contains core library for building Azure Java Functions. `azure-functions-java-core-library` contains base class for building Azure Java Functions. 
-However, you don't need to include `azure-functions-java-core-library` as a dependency when you build your function app, because it comes with [azure-functions-java-library](https://github.com/Azure/azure-functions-java-library)
-which has a transitive dependency on `azure-functions-java-core-library`
+# SPI for Azure Java Functions
+This repo contains SPI library for building Azure Java Functions. **This library should not be used when building your function app.** 
+This library provides hooks to third parties supporting them to interact with function runtime during function invocation process. 
+**_This library should be used with scope as `provided`, because customer should not have transitive dependency on it_**
 
 For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
 

@@ -1,4 +1,4 @@
-## azure-functions-java-spi-library_1.0.0
+## azure-functions-java-spi_1.0.0
 
 ### New
 * to be update
