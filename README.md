@@ -5,10 +5,10 @@
 |master|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=master)|
 |dev|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=dev)|
 
-# Extend library for Azure Java Functions
-This repo contains two additional libraries for building Azure Java Functions. 
-* [azure-functions-java-core-library](https://github.com/Azure/azure-functions-java-???-library/azure-functions-java-core-library)
-* [azure-functions-java-spi](https://github.com/Azure/azure-functions-java-???-library/azure-functions-java-spi)
+# Additional artifacts for Azure Java Functions
+This repo contains two additional artifacts for building Azure Java Functions. 
+* [azure-functions-java-core-library](https://github.com/Azure/azure-functions-java-additions/azure-functions-java-core-library)
+* [azure-functions-java-spi](https://github.com/Azure/azure-functions-java-additions/azure-functions-java-spi)
 
 For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
 
