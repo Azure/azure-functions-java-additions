@@ -5,7 +5,7 @@ This repo contains core library for building Azure Java Functions. `azure-functi
 However, you don't need to include `azure-functions-java-core-library` as a dependency when you build your function app, because it comes with [azure-functions-java-library](https://github.com/Azure/azure-functions-java-library)
 which has a transitive dependency on `azure-functions-java-core-library`
 
-For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
+For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java).
 
 ## azure-functions-maven plugin
 [How to use azure-functions-maven plugin to create, update, deploy and test azure java functions](https://docs.microsoft.com/en-us/java/api/overview/azure/maven/azure-functions-maven-plugin/readme?view=azure-java-stable)
@@ -13,10 +13,6 @@ For more information about Azure Java Functions please visit the [complete docum
 ## Prerequisites
 
 * Java 8
-
-## Parent POM
-
-Please see for details on parent POM https://github.com/Microsoft/maven-java-parent
 
 ## Summary
 
