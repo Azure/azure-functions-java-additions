@@ -1,8 +1,8 @@
 package com.microsoft.azure.functions;
 
-import org.junit.*;
+import org.junit.Test;
 
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertTrue;
 
 /**
  * Unit tests that enforce annotation contracts and conventions for Functions

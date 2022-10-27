@@ -1,16 +1,11 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
-|Branch|Status|
-|---|---|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/ebphtfegnposba6w?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-java-library?branch=dev)|
+# Core library for Azure Java Functions
+This repo contains core library for building Azure Java Functions. `azure-functions-java-core-library` contains base class for building Azure Java Functions. 
+However, you don't need to include `azure-functions-java-core-library` as a dependency when you build your function app, because it comes with [azure-functions-java-library](https://github.com/Azure/azure-functions-java-library)
+which has a transitive dependency on `azure-functions-java-core-library`
 
-# Additional artifacts for Azure Java Functions
-This repo contains two additional artifacts for building Azure Java Functions. 
-* [azure-functions-java-core-library](https://github.com/Azure/azure-functions-java-additions/azure-functions-java-core-library)
-* [azure-functions-java-spi](https://github.com/Azure/azure-functions-java-additions/azure-functions-java-spi)
-
-For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java) for more details.
+For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java).
 
 ## azure-functions-maven plugin
 [How to use azure-functions-maven plugin to create, update, deploy and test azure java functions](https://docs.microsoft.com/en-us/java/api/overview/azure/maven/azure-functions-maven-plugin/readme?view=azure-java-stable)
@@ -18,10 +13,6 @@ For more information about Azure Java Functions please visit the [complete docum
 ## Prerequisites
 
 * Java 8
-
-## Parent POM
-
-Please see for details on Parent POM https://github.com/Microsoft/maven-java-parent
 
 ## Summary
 
