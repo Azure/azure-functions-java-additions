@@ -1,7 +1,7 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
 # SPI for Azure Java Functions
-This repo contains SPI for building Azure Java Functions. **This library should not be used when building your function app.** 
+This repo contains SPI for building Azure Java Functions. **This library could be used when building your function app.** 
 This library provides hooks to third parties supporting them to interact with function runtime during function invocation process. 
 **_This library should be used with scope as `provided`, because customers should not inherit it via a transitive dependency_**
 
