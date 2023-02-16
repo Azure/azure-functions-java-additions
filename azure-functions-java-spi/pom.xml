@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.microsoft.azure.functions</groupId>
     <artifactId>azure-functions-java-spi</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
     <parent>
         <groupId>com.microsoft.maven</groupId>
@@ -62,6 +62,12 @@
             <groupId>com.microsoft.azure.functions</groupId>
             <artifactId>azure-functions-java-core-library</artifactId>
             <version>1.2.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.9.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
