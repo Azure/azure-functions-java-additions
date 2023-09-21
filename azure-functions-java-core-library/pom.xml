@@ -13,7 +13,7 @@
         <relativePath></relativePath>
     </parent>
 
-    <name>Microsoft Azure Functions Java Core Types</name>
+    <name>Microsoft Azure Functions Java Core Library</name>
     <description>This package contains core Java classes to interact with Microsoft Azure functions runtime.</description>
     <url>https://azure.microsoft.com/en-us/services/functions</url>
 
