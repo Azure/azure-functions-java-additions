@@ -31,6 +31,8 @@ variables:
     value: java_additions_public
   - name: codeql.excludePathPatterns
     value: '/extract,/azure-maven-archetypes,/azure-maven-plugins,/azure-functions-java-library,/azure-functions-java-worker'
+  - name: codeql.compiled.enabled
+    value: true
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
