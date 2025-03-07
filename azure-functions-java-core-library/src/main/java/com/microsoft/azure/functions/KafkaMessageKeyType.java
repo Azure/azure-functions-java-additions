@@ -5,15 +5,15 @@
  */
 package com.microsoft.azure.functions;
 
-public enum BrokerProtocol {
-    NOTSET(-1),
-    PLAINTEXT(0),
-    SSL(1),
-    SASLPLAINTEXT(2),
-    SASLSSL(3);
+public enum KafkaMessageKeyType {
+    Int(0),
+    Long(1),
+    String(2),
+    Binary(3);
 
     private int value;
-    BrokerProtocol(final int value) {
+
+    KafkaMessageKeyType(final int value) {
         this.value = value;
     }
 

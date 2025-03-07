@@ -5,15 +5,12 @@
  */
 package com.microsoft.azure.functions;
 
-public enum BrokerProtocol {
-    NOTSET(-1),
-    PLAINTEXT(0),
-    SSL(1),
-    SASLPLAINTEXT(2),
-    SASLSSL(3);
+public enum OAuthBearerMethod {
+    Default(0),
+    Oidc(1);
 
     private int value;
-    BrokerProtocol(final int value) {
+    OAuthBearerMethod(final int value) {
         this.value = value;
     }
 
