@@ -7,6 +7,8 @@
 package com.microsoft.azure.functions.internal.spi.middleware;
 
 import com.microsoft.azure.functions.ExecutionContext;
+import com.microsoft.azure.functions.cache.ObjectCache;
+import com.microsoft.azure.functions.cache.CacheKey;
 
 /**
  * Middleware Execution Context
@@ -55,4 +57,18 @@ public interface MiddlewareContext extends ExecutionContext {
      * @param returnValue value that will be updated as function return value.
      */
     void updateReturnValue(Object returnValue);
+
+    /**
+     * Provides a shared worker-level cache for advanced usage by middlewares.
+     *
+     * <p>Default implementation returns null, so existing code is not broken.
+     * The worker can override to supply a real implementation.</p>
+     *
+     * @param <K> The cache key type.
+     * @param <V> The stored value type.
+     * @return An ObjectCache instance, or null if not supported by the worker.
+     */
+    default <K extends CacheKey, V> ObjectCache<K, V> getCache() {
+        return null;
+    }
 }
