@@ -1,6 +1,6 @@
-package com.micsrosoft.azure.functions.sdktype.blob;
+package com.microsoft.azure.functions.sdktype.blob;
 
-import com.micsrosoft.azure.functions.sdktype.SdkTypeHydrator;
+import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 
 import java.lang.reflect.Method;
 

@@ -1,4 +1,4 @@
-package com.micsrosoft.azure.functions.sdktype;
+package com.microsoft.azure.functions.sdktype;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,17 +9,17 @@ import java.util.Collections;
  * Holds discovered SdkTypes from analyzing a method.
  */
 public class SdkParameterAnalysisResult {
-    private final List<SdkType<?>> sdkTypes = new ArrayList<>();
+    private final List<SdkTypeMetaData> sdkTypeMetaDatas = new ArrayList<>();
 
-    public void addSdkType(SdkType<?> sdkType) {
-        this.sdkTypes.add(sdkType);
+    public void addSdkTypeMetaData(SdkTypeMetaData SdkTypeMetaData) {
+        this.sdkTypeMetaDatas.add(SdkTypeMetaData);
     }
 
-    public List<SdkType<?>> getSdkTypes() {
-        return Collections.unmodifiableList(sdkTypes);
+    public List<SdkTypeMetaData> getSdkTypes() {
+        return Collections.unmodifiableList(sdkTypeMetaDatas);
     }
 
     public boolean hasAnySdkTypes() {
-        return !sdkTypes.isEmpty();
+        return !sdkTypeMetaDatas.isEmpty();
     }
 }

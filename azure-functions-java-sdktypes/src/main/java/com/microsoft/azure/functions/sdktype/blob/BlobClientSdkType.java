@@ -1,7 +1,9 @@
-package com.micsrosoft.azure.functions.sdktype.blob;
+package com.microsoft.azure.functions.sdktype.blob;
 
-import com.micsrosoft.azure.functions.sdktype.SdkType;
-import com.micsrosoft.azure.functions.sdktype.SdkTypeHydrator;
+import com.microsoft.azure.functions.cache.CacheKey;
+import com.microsoft.azure.functions.sdktype.CachableSdkType;
+import com.microsoft.azure.functions.sdktype.SdkType;
+import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 
 import java.lang.reflect.Parameter;
 
@@ -9,15 +11,13 @@ import java.lang.reflect.Parameter;
  * SdkType for building a BlobClient. The parseMetadata method obtains
  * containerName, blobName, and envVarForConnection from the invocation context.
  */
-public class BlobClientSdkType implements SdkType<BlobClientMetaData> {
+public class BlobClientSdkType implements CachableSdkType<BlobClientMetaData> {
     private final BlobClientHydrator hydrator;
     private final BlobClientMetaData metaData;
-    private final Parameter param;
 
-    public BlobClientSdkType(Parameter param) {
-        this.hydrator = new BlobClientHydrator();
-        this.metaData = new BlobClientMetaData();
-        this.param = param;
+    public BlobClientSdkType(BlobClientMetaData metaData, BlobClientHydrator hydrator) {
+        this.hydrator = hydrator;
+        this.metaData = metaData;
     }
 
     @Override
@@ -31,7 +31,7 @@ public class BlobClientSdkType implements SdkType<BlobClientMetaData> {
     }
 
     @Override
-    public Parameter getParam() {
-        return param;
+    public CacheKey buildCacheKey() {
+        return new BlobClientCacheKey(metaData);
     }
 }

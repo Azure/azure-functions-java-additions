@@ -1,4 +1,4 @@
-package com.micsrosoft.azure.functions.sdktype.blob;
+package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.cache.CacheKey;
 import java.util.Objects;
@@ -11,10 +11,10 @@ public class BlobClientCacheKey implements CacheKey {
     private final String blobName;
     private final String envVarForConnection;
 
-    public BlobClientCacheKey(String containerName, String blobName, String envVarForConnection) {
-        this.containerName = containerName;
-        this.blobName = blobName;
-        this.envVarForConnection = envVarForConnection;
+    public BlobClientCacheKey(BlobClientMetaData metaData) {
+        this.containerName = metaData.getContainerName();
+        this.blobName = metaData.getBlobName();
+        this.envVarForConnection = metaData.getConnectionEnvVar();
     }
 
     @Override

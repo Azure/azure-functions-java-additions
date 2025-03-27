@@ -1,4 +1,4 @@
-package com.micsrosoft.azure.functions.sdktype;
+package com.microsoft.azure.functions.sdktype;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -12,8 +12,8 @@ public class SdkParameterAnalyzer {
             String fqcn = param.getType().getName();
             if (registry.isRecognizedType(fqcn)) {
                 try {
-                    SdkType<?> sdkType = registry.createSdkType(fqcn, param);
-                    result.addSdkType(sdkType);
+                    SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
+                    result.addSdkTypeMetaData(sdkTypeMetaData);
                 } catch (Exception e) {
                     // Wrap in a runtime exception
                     throw new RuntimeException(

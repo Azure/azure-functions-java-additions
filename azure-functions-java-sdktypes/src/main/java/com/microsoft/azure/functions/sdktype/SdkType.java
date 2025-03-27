@@ -1,6 +1,4 @@
-package com.micsrosoft.azure.functions.sdktype;
-
-import com.microsoft.azure.functions.cache.CacheKey;
+package com.microsoft.azure.functions.sdktype;
 
 import java.lang.reflect.Parameter;
 
@@ -27,19 +25,14 @@ public interface SdkType<M extends SdkTypeMetaData> {
     SdkTypeHydrator<M> getHydrator();
 
     /**
-     * Return a Parameter object for the argument that uses this SDK type.
-     */
-    Parameter getParam();
-
-    /**
      * Build or retrieve a final instance of the SDK object.
      * Calls parseAndVerify() on metaData
      * then calls the hydrator.
      */
     default Object buildInstance() throws Exception {
-        M meta = getMetaData();
-        meta.parseAndVerify();
+        M metaData = getMetaData();
+        metaData.parseAndVerify();
         SdkTypeHydrator<M> hydrator = getHydrator();
-        return hydrator.createInstance(meta);
+        return hydrator.createInstance(metaData);
     }
 }

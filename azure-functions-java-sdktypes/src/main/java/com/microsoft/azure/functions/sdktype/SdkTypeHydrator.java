@@ -1,4 +1,4 @@
-package com.micsrosoft.azure.functions.sdktype;
+package com.microsoft.azure.functions.sdktype;
 
 /**
  * A hydrator that builds the final client instance

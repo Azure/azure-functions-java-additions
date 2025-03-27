@@ -1,8 +1,9 @@
-package com.micsrosoft.azure.functions.sdktype.blob;
+package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.cache.CacheKey;
-import com.micsrosoft.azure.functions.sdktype.SdkTypeMetaData;
+import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 /**
@@ -16,6 +17,13 @@ public class BlobClientMetaData implements SdkTypeMetaData {
     private String containerName;
     private String blobName;
     private String connectionEnvVar;
+    private String fqcn;
+    private Parameter param;
+
+    public BlobClientMetaData(String fqcn, Parameter param) {
+        this.fqcn = fqcn;
+        this.param = param;
+    }
 
     @Override
     public Set<String> getRequiredFields() {
@@ -52,9 +60,12 @@ public class BlobClientMetaData implements SdkTypeMetaData {
     }
 
     @Override
-    public CacheKey buildCacheKey() {
-        return new BlobClientCacheKey(containerName, blobName, connectionEnvVar);
+    public Parameter getParam() {
+        return param;
     }
+
+    @Override
+    public String getFqcn() { return fqcn; }
 
     public String getContainerName() { return containerName; }
     public String getBlobName() { return blobName; }

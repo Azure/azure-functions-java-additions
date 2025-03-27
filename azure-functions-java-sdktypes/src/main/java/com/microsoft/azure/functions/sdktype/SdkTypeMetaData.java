@@ -1,7 +1,6 @@
-package com.micsrosoft.azure.functions.sdktype;
+package com.microsoft.azure.functions.sdktype;
 
-import com.microsoft.azure.functions.cache.CacheKey;
-
+import java.lang.reflect.Parameter;
 import java.util.Collections;
 import java.util.Set;
 
@@ -39,11 +38,14 @@ public interface SdkTypeMetaData {
     void parseAndVerify();
 
     /**
-     * Optionally, if you want each metaData to produce a stable CacheKey
-     * for caching. If you don't want caching, you can skip this.
+     * Return a Parameter object for the argument that uses this SDK type.
      */
-    default CacheKey buildCacheKey() {
-        return null;
-    }
+    Parameter getParam();
+
+    /**
+     * The recognized fqcn, used so the registry can do createSdkType(...)
+     * at runtime without re-checking param type.
+     */
+    String getFqcn();
 }
 
