@@ -15,7 +15,7 @@ public class SdkParameterAnalysisResult {
         this.sdkTypeMetaDatas.add(SdkTypeMetaData);
     }
 
-    public List<SdkTypeMetaData> getSdkTypes() {
+    public List<SdkTypeMetaData> getSdkTypesMetaData() {
         return Collections.unmodifiableList(sdkTypeMetaDatas);
     }
 

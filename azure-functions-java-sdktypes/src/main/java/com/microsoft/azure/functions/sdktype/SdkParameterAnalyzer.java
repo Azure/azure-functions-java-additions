@@ -26,4 +26,6 @@ public class SdkParameterAnalyzer {
         // TODO: Throw exception if more than one sdktype is detected
         return result;
     }
+
+    public SdkTypeRegistry getRegistry() { return this.registry; }
 }
