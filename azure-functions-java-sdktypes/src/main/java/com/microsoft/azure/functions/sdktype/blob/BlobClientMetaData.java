@@ -19,7 +19,7 @@ public class BlobClientMetaData implements SdkTypeMetaData {
 
     @Override
     public Set<String> getRequiredFields() {
-        return Set.of("containerName","blobName","connectionEnvVar");
+        return Set.of("ContainerName","BlobName","Connection");
     }
 
     @Override
@@ -35,9 +35,9 @@ public class BlobClientMetaData implements SdkTypeMetaData {
     @Override
     public void parseAndVerify() {
         // transform the raw values into typed fields
-        this.containerName = (String) rawValues.get("containerName");
-        this.blobName = (String) rawValues.get("blobName");
-        this.connectionEnvVar = (String) rawValues.get("connectionEnvVar");
+        this.containerName = (String) rawValues.get("ContainerName");
+        this.blobName = (String) rawValues.get("BlobName");
+        this.connectionEnvVar = (String) rawValues.get("Connection");
 
         // do checks
         if (containerName == null || containerName.isEmpty()) {
