@@ -3,9 +3,7 @@ package com.microsoft.azure.functions.sdktype.blob;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 
 import java.lang.reflect.Parameter;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * MetaData for building a BlobContainerClient, storing fields such as containerName,
@@ -27,7 +25,7 @@ public class BlobContainerMetaData implements SdkTypeMetaData {
     @Override
     public Set<String> getRequiredFields() {
         // Typically "ContainerName" and "Connection" for the environment variable prefix
-        return Set.of("ContainerName", "Connection");
+        return new HashSet<>(Arrays.asList("ContainerName", "Connection"));
     }
 
     @Override

@@ -27,7 +27,7 @@ public class BlobClientMetaData implements SdkTypeMetaData {
 
     @Override
     public Set<String> getRequiredFields() {
-        return Set.of("ContainerName","BlobName","Connection");
+        return new HashSet<>(Arrays.asList("ContainerName", "BlobName", "Connection"));
     }
 
     @Override
