@@ -47,10 +47,10 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
             LOGGER.info("Detected managed identity usage with prefix: " + envVar);
 
             // Attempt to load 'accountName', 'serviceUri', 'blobServiceUri', 'clientId' from prefix
-            String accountName = System.getenv(envVar + "__accountName");
-            String serviceUri = System.getenv(envVar + "__serviceUri");
-            String blobServiceUri = System.getenv(envVar + "__blobServiceUri");
-            String clientId = System.getenv(envVar + "__clientId");
+            final String accountName = System.getenv(envVar + "__accountName");
+            final String serviceUri = System.getenv(envVar + "__serviceUri");
+            final String blobServiceUri = System.getenv(envVar + "__blobServiceUri");
+            final String clientId = System.getenv(envVar + "__clientId");
 
             // Resolve the endpoint
             String endpoint = resolveEndpoint(accountName, serviceUri, blobServiceUri);
@@ -59,10 +59,8 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
             Object credential = buildManagedIdentityCredential(classLoader, clientId);
 
             // Now call builder.credential(...) and builder.endpoint(...)
-            // NOTE: For this reflection, we need the 'TokenCredential' class, either unshaded or fallback.
-            final String unshadedName = "com.azure.core.credential.TokenCredential";
-            final String fallbackName = "com.microsoft.azure.functions.shaded.com.azure.core.credential.TokenCredential";
-            Class<?> tokenCredClass = tryLoadClass(classLoader, unshadedName, fallbackName);
+            // NOTE: For this reflection, we need the 'TokenCredential' class
+            Class<?> tokenCredClass = classLoader.loadClass("com.azure.core.credential.TokenCredential");
 
             Method credentialMethod = blobBuilderClass.getMethod("credential", tokenCredClass);
             credentialMethod.invoke(blobBuilder, credential);
@@ -118,10 +116,8 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
      */
     private Object buildManagedIdentityCredential(ClassLoader classLoader, String clientId) throws Exception {
         LOGGER.info("Attempting to build DefaultAzureCredential reflectively.");
-        // 1) Try unshaded
-        final String unshadedName = "com.azure.identity.DefaultAzureCredentialBuilder";
-        final String fallbackName = "com.microsoft.azure.functions.shaded.com.azure.identity.DefaultAzureCredentialBuilder";
-        Class<?> builderClass = tryLoadClass(classLoader, unshadedName, fallbackName);
+
+        Class<?> builderClass = classLoader.loadClass("com.azure.identity.DefaultAzureCredentialBuilder");
         Object builder = builderClass.getDeclaredConstructor().newInstance();
 
         if (clientId != null && !clientId.isEmpty()) {
@@ -135,18 +131,5 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
         // call build() to get the credential
         Method buildMethod = builderClass.getMethod("build");
         return buildMethod.invoke(builder);
-    }
-
-    /**
-     * Attempt to load a class with the given unshadedName; if that fails, fallbackName is used.
-     */
-    private Class<?> tryLoadClass(ClassLoader cl, String unshadedName, String fallbackName) throws ClassNotFoundException {
-        try {
-            return cl.loadClass(unshadedName);
-        } catch (ClassNotFoundException ex) {
-            LOGGER.warning("Could not find unshaded class: " + unshadedName
-                    + ". Attempting fallback: " + fallbackName);
-            return cl.loadClass(fallbackName);
-        }
     }
 }
