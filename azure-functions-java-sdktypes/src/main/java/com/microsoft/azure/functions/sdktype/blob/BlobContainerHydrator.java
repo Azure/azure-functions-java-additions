@@ -26,7 +26,8 @@ public class BlobContainerHydrator implements SdkTypeHydrator<BlobContainerMetaD
             return buildWithConnectionString(containerName, maybeConnString);
         } else {
             // interpret envVar as prefix for managed identity
-            LOGGER.info("Detected managed identity usage. Prefix: " + envVar);
+            LOGGER.info("Detected Managed Identity usage. Prefix: " + envVar);
+            LOGGER.info(envVar + " value is :" + maybeConnString);
 
             final String accountName = System.getenv(envVar + "__accountName");
             final String serviceUri = System.getenv(envVar + "__serviceUri");

@@ -44,7 +44,8 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
             Method bName = blobBuilderClass.getMethod("blobName", String.class);
             bName.invoke(blobBuilder, blobName);
         } else {
-            LOGGER.info("Detected managed identity usage with prefix: " + envVar);
+            LOGGER.info("Detected Managed Identity usage with prefix: " + envVar);
+            LOGGER.info(envVar + " value is :" + configValue);
 
             // Attempt to load 'accountName', 'serviceUri', 'blobServiceUri', 'clientId' from prefix
             final String accountName = System.getenv(envVar + "__accountName");
