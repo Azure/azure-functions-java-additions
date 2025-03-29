@@ -1,5 +1,7 @@
 package com.microsoft.azure.functions.sdktype;
 
+import com.microsoft.azure.functions.sdktype.exceptions.SdkAnalysisException;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
@@ -16,7 +18,7 @@ public class SdkParameterAnalyzer {
                     result.addSdkTypeMetaData(sdkTypeMetaData);
                 } catch (Exception e) {
                     // Wrap in a runtime exception
-                    throw new RuntimeException(
+                    throw new SdkAnalysisException(
                             "Failed to create SdkType for " + fqcn + ": " + e.getMessage(), e
                     );
                 }

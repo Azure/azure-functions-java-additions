@@ -1,6 +1,7 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
+import com.microsoft.azure.functions.sdktype.exceptions.SdkHydrationException;
 
 import java.lang.reflect.Method;
 import java.util.logging.Logger;
@@ -23,7 +24,7 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
         String configValue = System.getenv(envVar);
 
         if (configValue == null || configValue.isEmpty()) {
-            throw new IllegalArgumentException("No environment variable set for: " + envVar);
+            throw new SdkHydrationException("No environment variable set for: " + envVar);
         }
 
         // Step 1: Reflectively load com.azure.storage.blob.BlobClientBuilder
@@ -110,7 +111,7 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
             LOGGER.info("Resolved endpoint from serviceUri: " + serviceUri);
             return serviceUri;
         }
-        throw new IllegalArgumentException("Missing accountName, blobServiceUri, or serviceUri for the managed identity scenario.");
+        throw new SdkHydrationException("Missing accountName, blobServiceUri, or serviceUri for the managed identity scenario.");
     }
 
     /**

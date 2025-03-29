@@ -2,6 +2,7 @@ package com.microsoft.azure.functions.sdktype.tests;
 
 import com.microsoft.azure.functions.sdktype.SdkTypeRegistry;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
+import com.microsoft.azure.functions.sdktype.exceptions.SdkRegistryException;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -48,7 +49,7 @@ class SdkTypeRegistryTest {
 
         // try an unrecognized FQCN
         Parameter finalDummyParam = dummyParam;
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(SdkRegistryException.class, () -> {
             registry.createMetaData("com.example.Unrecognized", finalDummyParam);
         });
     }

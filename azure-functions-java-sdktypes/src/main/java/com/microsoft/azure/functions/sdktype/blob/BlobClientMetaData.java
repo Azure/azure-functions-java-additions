@@ -1,10 +1,14 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
-import com.microsoft.azure.functions.cache.CacheKey;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 
 import java.lang.reflect.Parameter;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 
 /**
  * Example metaData class for storing fields: containerName, blobName, etc.

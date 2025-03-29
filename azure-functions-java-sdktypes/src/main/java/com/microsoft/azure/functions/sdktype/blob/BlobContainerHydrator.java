@@ -1,6 +1,7 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
+import com.microsoft.azure.functions.sdktype.exceptions.SdkHydrationException;
 
 import java.lang.reflect.Method;
 import java.util.logging.Logger;
@@ -119,6 +120,6 @@ public class BlobContainerHydrator implements SdkTypeHydrator<BlobContainerMetaD
             LOGGER.info("Resolved endpoint from serviceUri: " + serviceUri);
             return serviceUri;
         }
-        throw new IllegalArgumentException("Missing accountName, blobServiceUri, or serviceUri for managed identity scenario.");
+        throw new SdkHydrationException("Missing accountName, blobServiceUri, or serviceUri for managed identity scenario.");
     }
 }

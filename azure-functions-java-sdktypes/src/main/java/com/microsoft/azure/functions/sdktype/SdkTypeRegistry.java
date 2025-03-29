@@ -2,6 +2,7 @@ package com.microsoft.azure.functions.sdktype;
 
 import com.microsoft.azure.functions.sdktype.blob.BlobClientSdkTypeFactory;
 import com.microsoft.azure.functions.sdktype.blob.BlobContainerSdkTypeFactory;
+import com.microsoft.azure.functions.sdktype.exceptions.SdkRegistryException;
 
 import java.lang.reflect.Parameter;
 import java.util.HashMap;
@@ -30,7 +31,7 @@ public class SdkTypeRegistry {
     public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws Exception {
         SdkTypeFactory factory = knownTypes.get(fqcn);
         if (factory == null) {
-            throw new IllegalArgumentException("Unrecognized SdkType: " + fqcn);
+            throw new SdkRegistryException("Unrecognized SdkType: " + fqcn);
         }
         return factory.createMetaData(fqcn, param);
     }
@@ -42,7 +43,7 @@ public class SdkTypeRegistry {
         String fqcn = metaData.getFqcn(); // see below how we store this
         SdkTypeFactory factory = knownTypes.get(fqcn);
         if (factory == null) {
-            throw new IllegalArgumentException("Unrecognized SdkType: " + fqcn);
+            throw new SdkRegistryException("Unrecognized SdkType: " + fqcn);
         }
         return factory.createSdkType(metaData);
     }
