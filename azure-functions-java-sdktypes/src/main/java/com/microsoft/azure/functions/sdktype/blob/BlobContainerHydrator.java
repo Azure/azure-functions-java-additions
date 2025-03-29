@@ -42,7 +42,9 @@ public class BlobContainerHydrator implements SdkTypeHydrator<BlobContainerMetaD
     }
 
     private boolean isConnectionString(String val) {
-        return val.contains("AccountKey=") || val.contains("DefaultEndpointsProtocol=");
+        return val.contains("AccountKey=")
+                || val.contains("DefaultEndpointsProtocol=")
+                || val.contains("UseDevelopmentStorage=true");
     }
 
     private Object buildWithConnectionString(String containerName, String connStr) throws Exception {

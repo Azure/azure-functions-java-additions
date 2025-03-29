@@ -89,7 +89,9 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
      * Decide if configValue is likely a connection string by checking for well-known keywords.
      */
     private boolean isConnectionString(String value) {
-        return value.contains("AccountKey=") || value.contains("DefaultEndpointsProtocol=");
+        return value.contains("AccountKey=")
+                || value.contains("DefaultEndpointsProtocol=")
+                || value.contains("UseDevelopmentStorage=true");
     }
 
     /**
