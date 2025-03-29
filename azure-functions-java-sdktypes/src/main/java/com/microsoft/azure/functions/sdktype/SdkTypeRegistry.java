@@ -21,8 +21,8 @@ public class SdkTypeRegistry {
         knownTypes.put("com.azure.storage.blob.BlobContainerClient", new BlobContainerSdkTypeFactory());
     }
 
-    /** Check if we recognize a param type */
-    public boolean isRecognizedType(String fqcn) {
+    /** Check if we support a param type */
+    public boolean isTypeSupported(String fqcn) {
         return knownTypes.containsKey(fqcn);
     }
 

@@ -16,10 +16,10 @@ class SdkTypeRegistryTest {
     }
 
     @Test
-    void testIsRecognizedType() {
+    void testIsTypeSupported() {
         SdkTypeRegistry registry = new SdkTypeRegistry();
-        assertTrue(registry.isRecognizedType("com.azure.storage.blob.BlobClient"));
-        assertFalse(registry.isRecognizedType("com.example.UnrecognizedClient"));
+        assertTrue(registry.isTypeSupported("com.azure.storage.blob.BlobClient"));
+        assertFalse(registry.isTypeSupported("com.example.UnrecognizedClient"));
     }
 
     @Test

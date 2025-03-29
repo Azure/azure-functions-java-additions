@@ -12,7 +12,7 @@ public class SdkParameterAnalyzer {
         SdkParameterAnalysisResult result = new SdkParameterAnalysisResult();
         for (Parameter param : method.getParameters()) {
             String fqcn = param.getType().getName();
-            if (registry.isRecognizedType(fqcn)) {
+            if (registry.isTypeSupported(fqcn)) {
                 try {
                     SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
                     result.addSdkTypeMetaData(sdkTypeMetaData);
