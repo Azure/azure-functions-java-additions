@@ -7,21 +7,19 @@ import com.microsoft.azure.functions.sdktype.exceptions.SdkTypeCreationException
 
 import java.lang.reflect.Parameter;
 
+/**
+ * SdkTypeFactory for building a BlobClientSdkType from BlobClientMetaData.
+ * Potentially throws SdkTypeCreationException if metaData is invalid or reflection fails.
+ */
 public class BlobClientSdkTypeFactory implements SdkTypeFactory {
     @Override
-    public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws Exception {
+    public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws SdkTypeCreationException {
         return new BlobClientMetaData(fqcn, param);
     }
 
     @Override
-    public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws Exception {
-        try {
-            BlobClientMetaData blobClientMetaData = (BlobClientMetaData) metaData;
-            return new BlobClientSdkType(blobClientMetaData, new BlobClientHydrator());
-        } catch (ClassCastException cce) {
-            throw new SdkTypeCreationException("Failed to cast metaData to BlobClientMetaData", cce);
-        } catch (Exception ex) {
-            throw new SdkTypeCreationException("Failed to create BlobClientSdkType", ex);
-        }
+    public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws SdkTypeCreationException {
+        BlobClientMetaData blobClientMetaData = (BlobClientMetaData) metaData;
+        return new BlobClientSdkType(blobClientMetaData, new BlobClientHydrator());
     }
 }

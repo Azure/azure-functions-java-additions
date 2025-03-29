@@ -7,8 +7,10 @@ import java.lang.reflect.Method;
 import java.util.logging.Logger;
 
 /**
- * Reflection logic for building a BlobClient from BlobClientMetaData.
- * Supports both connection strings and managed identity (with fallback to shaded azure-identity if not present).
+ * Reflection logic for building a BlobClient from BlobClientMetaData,
+ * potentially throwing SdkHydrationException if reflection or environment
+ * variables are invalid. Supports both connection strings and
+ * managed identity (with fallback to shaded azure-identity).
  */
 public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
     private static final Logger LOGGER = Logger.getLogger(BlobClientHydrator.class.getName());

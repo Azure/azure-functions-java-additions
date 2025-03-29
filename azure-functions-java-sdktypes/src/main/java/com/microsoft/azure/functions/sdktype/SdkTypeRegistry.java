@@ -10,6 +10,7 @@ import java.util.Map;
 
 /**
  * A registry that knows about recognized SDK client FQCNs and can create SdkType objects.
+ * Throws SdkRegistryException if asked to create metadata or an SdkType for an unrecognized FQCN.
  */
 public class SdkTypeRegistry {
     // Maps FQCN -> Class<? extends SdkType>

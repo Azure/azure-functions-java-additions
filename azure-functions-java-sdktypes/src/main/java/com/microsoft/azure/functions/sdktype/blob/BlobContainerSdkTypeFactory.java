@@ -13,20 +13,14 @@ import java.lang.reflect.Parameter;
 public class BlobContainerSdkTypeFactory implements SdkTypeFactory {
 
     @Override
-    public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws Exception {
+    public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws SdkTypeCreationException {
         // Return a minimal metaData object
         return new BlobContainerMetaData(fqcn, param);
     }
 
     @Override
-    public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws Exception {
-        try {
-            BlobContainerMetaData containerMeta = (BlobContainerMetaData) metaData;
-            return new BlobContainerSdkType(containerMeta);
-        } catch (ClassCastException cce) {
-            throw new SdkTypeCreationException("Failed to cast metaData to BlobContainerMetaData", cce);
-        } catch (Exception ex) {
-            throw new SdkTypeCreationException("Failed to create BlobContainerClientSdkType", ex);
-        }
+    public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws SdkTypeCreationException {
+        BlobContainerMetaData containerMeta = (BlobContainerMetaData) metaData;
+        return new BlobContainerSdkType(containerMeta);
     }
 }

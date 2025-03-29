@@ -33,7 +33,8 @@ public interface SdkTypeMetaData {
 
     /**
      * A method to finalize fields & do validations.
-     * If something is missing or invalid, throw an exception.
+     * If something is missing or invalid, throw a runtime exception (e.g., IllegalArgumentException)
+     * or a custom type if desired.
      */
     void parseAndVerify();
 

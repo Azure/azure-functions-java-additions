@@ -6,7 +6,8 @@ import java.util.Collections;
 
 
 /**
- * Holds discovered SdkTypes from analyzing a method.
+ * Holds discovered SdkTypeMetaData objects from analyzing a method's parameters.
+ * Typically used by the SdkParameterAnalyzer to store recognized SDK-based parameters.
  */
 public class SdkParameterAnalysisResult {
     private final List<SdkTypeMetaData> sdkTypeMetaDatas = new ArrayList<>();

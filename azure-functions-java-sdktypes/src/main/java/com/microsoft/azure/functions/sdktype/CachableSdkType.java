@@ -4,8 +4,11 @@ import com.microsoft.azure.functions.cache.CacheKey;
 
 public interface CachableSdkType <M extends SdkTypeMetaData> extends SdkType<M>{
     /**
-     * Allows the worker to build a stable cache key for storing
-     * or retrieving the final instance from a WorkerObjectCache.
+     * Builds a stable cache key for storing or retrieving
+     * the final instance from a WorkerObjectCache.
+     *
+     * @return A CacheKey representing the configuration or details
+     *         needed to identify this SDK object in a cache.
      */
     CacheKey buildCacheKey();
 }

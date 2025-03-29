@@ -16,11 +16,9 @@ public class SdkParameterAnalyzer {
                 try {
                     SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
                     result.addSdkTypeMetaData(sdkTypeMetaData);
-                } catch (Exception e) {
-                    // Wrap in a runtime exception
-                    throw new SdkAnalysisException(
-                            "Failed to create SdkType for " + fqcn + ": " + e.getMessage(), e
-                    );
+                } catch (Exception ex) {
+                    // Wrap the underlying issue in a custom SdkAnalysisException for clarity
+                    throw new SdkAnalysisException("Failed to create metadata for recognized type: " + fqcn, ex);
                 }
             }
         }

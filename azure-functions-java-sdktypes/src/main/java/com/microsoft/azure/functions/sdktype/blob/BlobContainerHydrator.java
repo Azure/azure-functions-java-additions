@@ -8,7 +8,8 @@ import java.util.logging.Logger;
 
 /**
  * Reflection logic for building a BlobContainerClient from BlobContainerMetaData,
- * supporting both connection string usage and managed identity usage.
+ * throwing SdkHydrationException on reflection or environment errors.
+ * Supports both connection string usage and managed identity usage.
  */
 public class BlobContainerHydrator implements SdkTypeHydrator<BlobContainerMetaData> {
     private static final Logger LOGGER = Logger.getLogger(BlobContainerHydrator.class.getName());
