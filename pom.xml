@@ -10,5 +10,6 @@
     <modules>
 		<module>azure-functions-java-core-library</module>
 		<module>azure-functions-java-spi</module>
+        <module>azure-functions-java-sdktypes</module>
     </modules>
 </project>
