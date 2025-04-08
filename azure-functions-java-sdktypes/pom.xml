@@ -6,15 +6,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.microsoft.azure.functions</groupId>
-        <artifactId>azure-functions-java-additions</artifactId>
-        <version>1.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <groupId>com.microsoft.maven</groupId>
+        <artifactId>java-8-parent</artifactId>
+        <version>8.0.1</version>
+        <relativePath></relativePath>
     </parent>
 
     <groupId>com.microsoft.azure.functions</groupId>
     <artifactId>azure-functions-java-sdktypes</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>Microsoft Azure Functions Java SDK Types</name>
@@ -62,5 +62,15 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.4.1</version>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -5,11 +5,11 @@ import java.util.Collections;
 import java.util.Set;
 
 /**
- * A generic interface for storing & verifying raw fields needed
+ * A generic interface for storing and verifying raw fields needed
  * to build an SDK client object.
  * Typically:
  *   - setFieldValue(key, value)
- *   - parseAndVerify() to finalize typed fields & do checks
+ *   - parseAndVerify() to finalize typed fields and do checks
  *   - buildCacheKey() if relevant
  */
 public interface SdkTypeMetaData {
@@ -32,7 +32,7 @@ public interface SdkTypeMetaData {
     void setFieldValue(String key, Object value);
 
     /**
-     * A method to finalize fields & do validations.
+     * A method to finalize fields and do validations.
      * If something is missing or invalid, throw a runtime exception (e.g., IllegalArgumentException)
      * or a custom type if desired.
      */
