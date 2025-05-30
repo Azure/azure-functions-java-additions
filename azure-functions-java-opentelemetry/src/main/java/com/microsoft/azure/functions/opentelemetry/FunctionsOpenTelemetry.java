@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 public final class FunctionsOpenTelemetry {
 
 
-    private static Logger LOGGER = null;
+    private static Logger LOGGER = Logger.getLogger(FunctionsOpenTelemetry.class.getSimpleName());
     private static volatile OpenTelemetrySdk sdk;
 
     public static void setLogger(Logger logger) {
@@ -28,10 +28,22 @@ public final class FunctionsOpenTelemetry {
     public static OpenTelemetrySdk sdk() {
         if (sdk == null) {
             synchronized (FunctionsOpenTelemetry.class) {
-                if (sdk == null) sdk = buildSdk();
+                if (sdk == null) {
+                    LOGGER.info("Initializing OpenTelemetry SDK ...");
+                    sdk = buildSdk();
+                    LOGGER.info("OpenTelemetry SDK Initialized.");
+                }
             }
         }
+
         return sdk;
+    }
+
+    /**
+     * Ensures that the OpenTelemetry SDK is created.
+     */
+    public static void initialize() {
+        sdk();
     }
 
     /**
@@ -54,12 +66,9 @@ public final class FunctionsOpenTelemetry {
                 (existing, unused) -> existing.merge(FunctionsResourceDetector.getResource()));
 
         /* 2) Conditionally add Azure Monitor */
-        String connStr =
-                System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
-
-        if (!connStr.isEmpty()) {
+        if (isAppInsightsEnabled()) {
+            String connStr = System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
             applyAzureMonitor(builder, connStr);
-//            AzureMonitorAutoConfigure.customize(builder, connStr);
         }
 
         /* 3) Build, register globally, add shutdown hook */

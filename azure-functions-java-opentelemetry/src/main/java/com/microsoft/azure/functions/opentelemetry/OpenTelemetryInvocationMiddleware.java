@@ -16,6 +16,10 @@ import io.opentelemetry.context.Scope;
  */
 public class OpenTelemetryInvocationMiddleware implements Middleware {
 
+    public OpenTelemetryInvocationMiddleware() {
+        FunctionsOpenTelemetry.initialize();
+    }
+
     @Override
     public void invoke(MiddlewareContext context, MiddlewareChain chain) throws Exception {
         String spanName = context.getFunctionName();
