@@ -1,153 +1,154 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
-## Table of Contents
+# Azure Functions OpenTelemetry Integration (Java)
 
-- [Java SDK Types for Azure Functions](#java-sdk-types-for-azure-functions)
-  - [Overview](#overview)
-  - [Key Interfaces](#key-interfaces)
-    - [SdkTypeMetaData](#sdktypemetadata)
-    - [SdkType](#sdktype)
-    - [CachableSdkType](#cachablesdktype)
-    - [SdkTypeHydrator](#sdktypehydrator)
-    - [SdkTypeFactory](#sdktypefactory)
-  - [Registry](#registry)
-  - [Example: BlobClient](#example-blobclient)
-  - [Build-Time vs. Runtime](#build-time-vs-runtime)
-  - [Shaded Fallback Libraries](#shaded-fallback-libraries)
+This library integrates [OpenTelemetry](https://opentelemetry.io/) with Java-based Azure Functions. It automatically:
+
+1. Initializes the OpenTelemetry SDK on-demand.
+2. Merges resource attributes for Azure Functions (e.g., function name, region, resource group).
+3. Optionally configures Azure Monitor if the environment variable `APPLICATIONINSIGHTS_CONNECTION_STRING` is set.
+4. Provides a middleware that creates a new span for each function invocation.
 
 ---
 
-# Java SDK Types for Azure Functions
+## Contents
 
-This library provides a **two-phase** approach to binding advanced Azure SDK clients in the Java Functions worker:
-
-1. **Build-Time Analysis**: A minimal metadata object (`SdkTypeMetaData`) is created for each recognized SDK parameter (e.g., `BlobClient`, `BlobContainerClient`, etc.).
-2. **Runtime Invocation**: At invocation time, the worker transforms that
-   metadata into a **concrete SDK client** (`SdkType`) via reflection.
-   If Managed Identity is used for authentication, the worker will fall back to
-   a **shaded** `azure-identity` library if the user hasn't brought their own.
-
----
-
-## Overview
-
-The **`azure-functions-java-sdktypes`** library decouples **analysis** of SDK-bound parameters (e.g., `BlobClient`, `QueueClient`, etc.) from **invocation-time** creation of those SDK clients. This design helps:
-
-- Provide a **minimal** build-time “analyzer” that identifies recognized parameters.
-- Allow the **Java Worker** to create the actual client objects at runtime—using reflection—without forcing users to reference those libraries directly.
-- Support **connection string** vs. **managed identity** patterns, with fallback to a **shaded** `azure-identity` library if the user does not supply their own.
+* [Key Classes](#key-classes)
+* [Installation](#installation)
+* [How It Works](#how-it-works)
+* [Azure Monitor Integration (Optional)](#azure-monitor-integration-optional)
+* [Usage in Azure Functions](#usage-in-azure-functions)
+* [Local Development](#local-development)
+* [Testing](#testing)
 
 ---
 
-## Key Interfaces
+## Key Classes
 
-### SdkTypeMetaData
+1. **`FunctionsOpenTelemetry`**
 
-```java
-public interface SdkTypeMetaData {
-    Set<String> getRequiredFields();
-    Object getFieldValue(String key);
-    void setFieldValue(String key, Object value);
+  * Provides a static `sdk()` method to lazily initialize the SDK.
+  * Offers helper methods like `startSpan(...)` which accept either an OpenTelemetry `Context` or an Azure Functions `TraceContext`.
 
-    void parseAndVerify();
+2. **`FunctionsResourceDetector`**
 
-    Parameter getParam();
-    String getFqcn();
-}
+  * Detects standard Azure Functions environment variables (e.g. `WEBSITE_SITE_NAME`) and builds resource attributes like `service.name`, `cloud.provider`, etc.
+  * Fallbacks to `java-function-app` for `service.name` if not running on Azure.
+
+3. **`OpenTelemetryInvocationMiddleware`**
+
+  * Implements Azure Functions middleware (`com.microsoft.azure.functions.internal.spi.middleware.Middleware`).
+  * Initializes a static OTel SDK during when it is loaded in by the Java Worker during Worker Initialization. 
+  * Starts a span on each function invocation and propagates existing trace context from the Azure Functions host.
+
+---
+
+## Installation
+
+Add the library to your `pom.xml`:
+
+```xml
+<dependency>
+  <groupId>com.microsoft.azure.functions</groupId>
+  <artifactId>azure-functions-java-opentelemetry</artifactId>
+  <version>1.0.0</version>
+</dependency>
 ```
 
-- **Purpose**: Store raw field values and define `parseAndVerify()`.
-- **Build Tools**: Create an instance of `SdkTypeMetaData` for each recognized parameter (via the `SdkTypeRegistry`).
-- **Runtime**: The worker sets required fields (like `"ContainerName"`, `"Connection"`) from the invocation data, then calls `parseAndVerify()`.
-
-### SdkType
-
-```java
-public interface SdkType<M extends SdkTypeMetaData> {
-    M getMetaData();
-    SdkTypeHydrator<M> getHydrator();
-
-    default Object buildInstance() throws Exception {
-        M meta = getMetaData();
-        meta.parseAndVerify();
-        return getHydrator().createInstance(meta);
-    }
-}
-```
-
-- **Purpose**: A recognized “type” that references its `MetaData` and a `Hydrator`.
-- **Runtime**: The worker calls `buildInstance()` to finalize the client creation.
-
-### CachableSdkType
-
-```java
-public interface CachableSdkType<M extends SdkTypeMetaData> extends SdkType<M> {
-    CacheKey buildCacheKey();
-}
-```
-
-- **Purpose**: A **sub-interface** of `SdkType` that supports **caching** via a `CacheKey`.
-- **Why**: Some SDK clients are expensive to recreate each time. This interface allows the Java Worker to store them in a shared cache.
-
-### SdkTypeHydrator
-
-```java
-public interface SdkTypeHydrator<M extends SdkTypeMetaData> {
-    Object createInstance(M metaData) throws Exception;
-}
-```
-
-- **Purpose**: Reflection logic that **builds** the final client object from the typed fields in `MetaData`.
-- **Example**: Building a `BlobClient` from containerName, blobName, and connection string (or managed identity).
-
-### SdkTypeFactory
-
-```java
-public interface SdkTypeFactory {
-    SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws Exception;
-    SdkType<?> createSdkType(SdkTypeMetaData metaData) throws Exception;
-}
-```
-
-- **Purpose**: Provide **two-phase** creation:
-    - **Build-Time**: `createMetaData(...)` for minimal `SdkTypeMetaData`.
-    - **Runtime**: `createSdkType(...)` from that metadata.
+(*Adjust the version as needed.*)
 
 ---
 
-## Registry
+## How It Works
 
-**`SdkTypeRegistry`** holds a map of **FQCN** (e.g., `"com.azure.storage.blob.BlobClient"`) to a **`SdkTypeFactory`**. At:
+1. **Lazy Initialization**
+   When you first call `FunctionsOpenTelemetry.sdk()`, it constructs an `OpenTelemetrySdk` via `AutoConfiguredOpenTelemetrySdk.builder()`.
 
-- **Build-Time**: The analyzer calls `registry.createMetaData(fqcn, param)` to produce `SdkTypeMetaData`.
-- **Runtime**: The worker calls `registry.createSdkType(metaData)` to produce a concrete `SdkType`.
+  * Merges Azure Functions resource attributes.
+  * Registers a shutdown hook to cleanly close the tracer provider on JVM exit.
 
-This avoids duplicating the FQCN → `SdkType` logic.
+2. **Span Creation**
 
----
-
-## Example: BlobClient
-
-A typical **BlobClient** pattern:
-
-1. **`BlobClientMetaData`** extends `SdkTypeMetaData`, storing `containerName`, `blobName`, `connectionEnvVar`.
-2. **`BlobClientCacheKey`** implements `CacheKey`, capturing the fields for caching.
-3. **`BlobClientHydrator`** implements reflection logic for building the client via `BlobClientBuilder`.
-4. **`BlobClientSdkType`** implements `CachableSdkType<BlobClientMetaData>` returning a `buildCacheKey()` from the meta data.
-5. **`BlobClientSdkTypeFactory`** implements `SdkTypeFactory`, creating the meta data at build time, the `SdkType` at runtime.
+  * `FunctionsOpenTelemetry.startSpan(...)` can start spans for custom logic.
+  * `OpenTelemetryInvocationMiddleware` automatically starts a span for each function invocation and tags it with `faas.invocation_id` and `faas.name`.
 
 ---
 
-## Build-Time vs. Runtime
+## Azure Monitor Integration (Optional)
 
-1. **Build-Time**: The user’s function code is analyzed by the **Maven/Gradle** plugin. If a parameter is recognized (e.g., type `"com.azure.storage.blob.BlobClient"`), we do `registry.createMetaData(...)` to produce a `SdkTypeMetaData`.
-2. **Runtime**: The worker sees that metadata, calls `registry.createSdkType(metaData)` → yields a `SdkType`. The worker sets the required fields from the invocation request, calls `sdkType.buildInstance()`, and **injects** the resulting client into the user function.
+If you set `APPLICATIONINSIGHTS_CONNECTION_STRING` and also set `JAVA_APPLICATIONINSIGHTS_ENABLE_TELEMETRY=true`, this library tries to reflectively call `com.azure.monitor.opentelemetry.autoconfigure.AzureMonitorAutoConfigure`.
+
+* If that class is found, Azure Monitor is configured to export traces, metrics, and logs.
+* If not present, the initialization logs a warning and continues without Azure Monitor.
+
+This approach avoids a hard compile-time dependency on the Azure Monitor library.
 
 ---
 
-## Shaded Fallback Libraries
+## Usage in Azure Functions
 
-Often, we want to **shade** `azure-identity` so the worker can do **managed identity** reflection if the user does not bring those libraries. This allows:
+1. **Middleware Registration**
 
-- **Unshaded** usage if user has them: The hydrator tries `"com.azure.identity.DefaultAzureCredentialBuilder"`.
-- **Fallback** if not found: `"com.microsoft.azure.functions.shaded.com.azure.identity.DefaultAzureCredentialBuilder"`.
+  * Azure Functions Java Worker auto-discovers middleware. Make sure `OpenTelemetryInvocationMiddleware` is on your classpath.
+  * Once loaded, each invocation automatically has a new span, parented by any incoming trace context from the host.
+
+2. **Custom Spans**
+
+   ```java
+   Span customSpan = FunctionsOpenTelemetry.startSpan(
+       "myTracer",
+       "mySpan",
+       someTraceContext,   // or null
+       SpanKind.INTERNAL   // or null -> defaults to INTERNAL
+   );
+   try (Scope scope = customSpan.makeCurrent()) {
+       // do your work
+   } finally {
+       customSpan.end();
+   }
+   ```
+
+---
+
+## Local Development
+
+* If `WEBSITE_SITE_NAME` is not set, `FunctionsResourceDetector` defaults `service.name` to `"java-function-app"`.
+* All other Azure-specific attributes (e.g., region, resource group) remain unset if the corresponding environment variables do not exist.
+* You do **not** need to set Azure Monitor or any other exporters unless you want local telemetry exporting.
+
+---
+
+## Testing
+
+This repo includes simple unit tests under `src/test/java/...`. Key points:
+
+1. **Disabling Default Exporters**
+   If OpenTelemetry auto-configuration tries to enable exporters you haven’t added, you may get a `ConfigurationException`. We disable them in tests via:
+
+   ```java
+   @BeforeAll
+   static void disableUnusedExporters() {
+       System.setProperty("otel.metrics.exporter", "none");
+       System.setProperty("otel.traces.exporter", "none");
+       System.setProperty("otel.logs.exporter", "none");
+   }
+   ```
+
+2. **Mocking Environment Variables**
+   We use [System Stubs](https://github.com/webcompere/system-stubs) to temporarily override `System.getenv()` in tests. Example:
+
+   ```java
+   @SystemStub
+   private EnvironmentVariables environment;
+
+   @Test
+   void testResourceDetection() {
+       environment.set("WEBSITE_SITE_NAME", "myFunctionApp");
+       // ...
+   }
+   ```
+
+   This allows verifying resource attributes without polluting global environment variables.
+
+3. **Middleware Testing**
+   We use [Mockito](https://site.mockito.org/) to mock `MiddlewareContext` and confirm `OpenTelemetryInvocationMiddleware` properly invokes the chain and handles exceptions.

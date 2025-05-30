@@ -5,19 +5,19 @@ import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.sdk.resources.Resource;
 
 public final class FunctionsResourceDetector {
-    private static final String CLOUD_PROVIDER = "cloud.provider";
-    private static final String CLOUD_PLATFORM = "cloud.platform";
-    private static final String CLOUD_REGION = "cloud.region";
-    private static final String CLOUD_RESOURCE_ID = "cloud.resource.id";
-    private static final String DEPLOYMENT_ENVIRONMENT = "deployment.environment";
-    private static final String SERVICE_NAME = "service.name";
+    public static final String CLOUD_PROVIDER = "cloud.provider";
+    public static final String CLOUD_PLATFORM = "cloud.platform";
+    public static final String CLOUD_REGION = "cloud.region";
+    public static final String CLOUD_RESOURCE_ID = "cloud.resource.id";
+    public static final String DEPLOYMENT_ENVIRONMENT = "deployment.environment";
+    public static final String SERVICE_NAME = "service.name";
 
     // Well-known Azure Functions environment variables
-    private static final String WEBSITE_SITE_NAME = "WEBSITE_SITE_NAME";
-    private static final String REGION_NAME = "REGION_NAME";
-    private static final String WEBSITE_RESOURCE_GROUP = "WEBSITE_RESOURCE_GROUP";
-    private static final String WEBSITE_OWNER_NAME = "WEBSITE_OWNER_NAME";
-    private static final String WEBSITE_SLOT_NAME = "WEBSITE_SLOT_NAME";
+    public static final String WEBSITE_SITE_NAME = "WEBSITE_SITE_NAME";
+    public static final String REGION_NAME = "REGION_NAME";
+    public static final String WEBSITE_RESOURCE_GROUP = "WEBSITE_RESOURCE_GROUP";
+    public static final String WEBSITE_OWNER_NAME = "WEBSITE_OWNER_NAME";
+    public static final String WEBSITE_SLOT_NAME = "WEBSITE_SLOT_NAME";
 
     public static Resource getResource() {
         String siteName = System.getenv(WEBSITE_SITE_NAME);

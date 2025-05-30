@@ -2,7 +2,8 @@ package com.microsoft.azure.functions.opentelemetry;
 
 import com.microsoft.azure.functions.TraceContext;
 import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.*;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
