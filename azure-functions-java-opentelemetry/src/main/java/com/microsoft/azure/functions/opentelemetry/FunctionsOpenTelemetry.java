@@ -130,6 +130,13 @@ public final class FunctionsOpenTelemetry {
             Context parent,
             SpanKind kind) {
 
+        if (spanName == null || spanName.isEmpty()) {
+            throw new IllegalArgumentException("spanName must be non-null and non-empty");
+        }
+        if (tracerName == null || tracerName.isEmpty()) {
+            throw new IllegalArgumentException("tracerName must be non-null and non-empty");
+        }
+
         return sdk().getTracer(tracerName)
                 .spanBuilder(spanName)
                 .setParent(parent == null ? Context.current() : parent)
