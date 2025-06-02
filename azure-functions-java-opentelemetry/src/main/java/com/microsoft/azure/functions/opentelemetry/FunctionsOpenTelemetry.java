@@ -114,15 +114,7 @@ public final class FunctionsOpenTelemetry {
         }
     }
 
-    private static final TextMapGetter<TraceContext> TRACE_CONTEXT_GETTER = new TextMapGetter<TraceContext>() {
-        @Override public Iterable<String> keys(TraceContext t) { return t.getAttributes().keySet(); }
-        @Override public String get(TraceContext t, String key) {
-            if (t == null) return null;
-            if ("traceparent".equalsIgnoreCase(key)) return t.getTraceparent();
-            if ("tracestate".equalsIgnoreCase(key)) return t.getTracestate();
-            return t.getAttributes().get(key);
-        }
-    };
+    private static final TextMapGetter<TraceContext> TRACE_CONTEXT_GETTER = TraceContextTextMapGetter.INSTANCE;
 
     public static Span startSpan(
             String tracerName,
