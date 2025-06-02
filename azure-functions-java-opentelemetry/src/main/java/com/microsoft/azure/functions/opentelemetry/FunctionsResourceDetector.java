@@ -73,16 +73,8 @@ public final class FunctionsResourceDetector {
             attrBuilder.put(CLOUD_REGION, region);
         }
 
-        // ─── Derive subscription ID from WEBSITE_OWNER_NAME ──────────────────────
-        String subscriptionId = null;
-        if (ownerName != null && !ownerName.isEmpty()) {
-            int idx = ownerName.indexOf('+');           // "<subId>+<stamp>"
-            if (idx > 0) {
-                subscriptionId = ownerName.substring(0, idx);
-            }
-        }
-
         // Construct fully-qualified ARM resource ID when all pieces are present
+        String subscriptionId = extractSubscriptionId(ownerName);
         if (subscriptionId != null && resourceGroup != null && siteName != null) {
             String resourceId = String.format(
                     "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Web/sites/%s",
@@ -97,6 +89,21 @@ public final class FunctionsResourceDetector {
         attrBuilder.put(DEPLOYMENT_ENVIRONMENT, slotName);
 
         return Resource.create(attrBuilder.build());
+    }
+
+    /**
+     * Utility that parses {@code WEBSITE_OWNER_NAME} to extract the subscription ID.
+     * <p>The variable normally has the form {@code <subscriptionId>+<stamp>}.</p>
+     *
+     * @param ownerName the raw {@code WEBSITE_OWNER_NAME} value
+     * @return the subscription ID, or {@code null} if it cannot be parsed
+     */
+    public static String extractSubscriptionId(final String ownerName) {
+        if (ownerName == null || ownerName.isEmpty()) {
+            return null;
+        }
+        final int idx = ownerName.indexOf('+');
+        return (idx > 0) ? ownerName.substring(0, idx) : null;
     }
 
     // Prevent instantiation
