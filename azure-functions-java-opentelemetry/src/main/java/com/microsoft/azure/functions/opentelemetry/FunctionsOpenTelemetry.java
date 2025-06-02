@@ -32,9 +32,7 @@ public final class FunctionsOpenTelemetry {
         if (sdk == null) {
             synchronized (FunctionsOpenTelemetry.class) {
                 if (sdk == null) {
-                    LOGGER.info("Initializing OpenTelemetry SDK ...");
                     sdk = buildSdk();
-                    LOGGER.info("OpenTelemetry SDK Initialized.");
                 }
             }
         }
@@ -55,27 +53,38 @@ public final class FunctionsOpenTelemetry {
      * it (or pull it in transitively) without breaking compilation.</p>
      */
     private static OpenTelemetrySdk buildSdk() {
+        LOGGER.info("Initializing OpenTelemetry SDK ...");
+        OpenTelemetrySdk sdk;
 
-        AutoConfiguredOpenTelemetrySdkBuilder builder =
-                AutoConfiguredOpenTelemetrySdk.builder();
+        try {
+            final AutoConfiguredOpenTelemetrySdkBuilder builder =
+                    AutoConfiguredOpenTelemetrySdk.builder();
 
-        /* 1) Always merge the Azure Functions resource attributes */
-        builder.addResourceCustomizer(
-                (existing, unused) -> existing.merge(FunctionsResourceDetector.getResource()));
+            builder.addResourceCustomizer(
+                    (existing, unused) -> existing.merge(FunctionsResourceDetector.getResource()));
 
-        /* 2) Conditionally add Azure Monitor */
-        if (isAppInsightsEnabled()) {
-            String connStr = System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
-            applyAzureMonitor(builder, connStr);
+            if (isAppInsightsEnabled()) {
+                final String connStr = System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
+                applyAzureMonitor(builder, connStr);
+            }
+
+            sdk = builder.build().getOpenTelemetrySdk();
+            GlobalOpenTelemetry.set(sdk);
+
+            LOGGER.info("OpenTelemetry SDK initialised successfully.");
+
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE,
+                    "Failed to initialise OpenTelemetry SDK – falling back to no-op", ex);
+
+            sdk = OpenTelemetrySdk.builder().build();
+            GlobalOpenTelemetry.set(sdk);
         }
 
-        /* 3) Build, register globally, add shutdown hook */
-        OpenTelemetrySdk sdk = builder.build().getOpenTelemetrySdk();
-        GlobalOpenTelemetry.set(sdk);
-
-        Runtime.getRuntime()
-                .addShutdownHook(new Thread(
-                        () -> sdk.getSdkTracerProvider().shutdown()));
+        // ---- Add shutdown hook (needs a final reference) --------------------------
+        final OpenTelemetrySdk finalSdk = sdk;
+        Runtime.getRuntime().addShutdownHook(
+                new Thread(() -> finalSdk.getSdkTracerProvider().shutdown()));
 
         return sdk;
     }
