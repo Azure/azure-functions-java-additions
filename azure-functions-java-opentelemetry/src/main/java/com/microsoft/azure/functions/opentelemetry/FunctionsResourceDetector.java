@@ -51,13 +51,13 @@ public final class FunctionsResourceDetector {
      */
     public static Resource getResource() {
 
-        String siteName      = System.getenv(WEBSITE_SITE_NAME);
-        String region        = System.getenv(REGION_NAME);
-        String resourceGroup = System.getenv(WEBSITE_RESOURCE_GROUP);
-        String ownerName     = System.getenv(WEBSITE_OWNER_NAME);
+        final String siteName      = System.getenv(WEBSITE_SITE_NAME);
+        final String region        = System.getenv(REGION_NAME);
+        final String resourceGroup = System.getenv(WEBSITE_RESOURCE_GROUP);
+        final String ownerName     = System.getenv(WEBSITE_OWNER_NAME);
         String slotName      = System.getenv(WEBSITE_SLOT_NAME);
 
-        AttributesBuilder attrBuilder = Attributes.builder();
+        final AttributesBuilder attrBuilder = Attributes.builder();
 
         // ─── Basic service + cloud metadata ──────────────────────────────────────
         if (siteName != null && !siteName.isEmpty()) {
@@ -74,7 +74,7 @@ public final class FunctionsResourceDetector {
         }
 
         // Construct fully-qualified ARM resource ID when all pieces are present
-        String subscriptionId = extractSubscriptionId(ownerName);
+        final String subscriptionId = extractSubscriptionId(ownerName);
         if (subscriptionId != null && resourceGroup != null && siteName != null) {
             String resourceId = String.format(
                     "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Web/sites/%s",
