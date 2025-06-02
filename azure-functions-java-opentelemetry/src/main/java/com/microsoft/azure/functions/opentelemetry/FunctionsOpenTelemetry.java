@@ -25,8 +25,10 @@ public final class FunctionsOpenTelemetry {
         LOGGER = logger;
     }
 
-    /* ─────────────────────────────  SDK (lazy-init)  ─────────────────────────── */
-    public static OpenTelemetrySdk sdk() {
+    /**
+     * Ensures that the OpenTelemetry SDK is created.
+     */
+    public static void initialize() {
         if (sdk == null) {
             synchronized (FunctionsOpenTelemetry.class) {
                 if (sdk == null) {
@@ -36,15 +38,10 @@ public final class FunctionsOpenTelemetry {
                 }
             }
         }
-
-        return sdk;
     }
 
-    /**
-     * Ensures that the OpenTelemetry SDK is created.
-     */
-    public static void initialize() {
-        sdk();
+    public static OpenTelemetrySdk sdk() {
+        return sdk;
     }
 
     /**
