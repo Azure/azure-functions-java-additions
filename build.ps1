@@ -59,7 +59,7 @@ Push-Location -Path "./azure-functions-java-library" -StackName libraryDir
 Write-Host "Updating azure-functions-java-library to use current version of azure-functions-java-core-library"
 cmd.exe /c .\..\updateVersions.bat $coreLibraryVersion
 Write-Host "Building azure-functions-java-library"
-cmd.exe /c '.\mvnBuild.bat'
+cmd.exe /c 'mvn clean install -U -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -B -Dgpg.skip -Dspotbugs.skip=true'
 StopOnFailedExecution
 $libraryPom = Get-Content "pom.xml" -Raw
 $libraryPom -match "<version>(.*)</version>"

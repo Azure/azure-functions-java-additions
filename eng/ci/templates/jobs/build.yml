@@ -8,6 +8,12 @@ jobs:
       os: windows
 
     steps:
+    - task: JavaToolInstaller@0 # This step is necessary as Linux image has Java 11 as default
+      inputs:
+        versionSpec: '11'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Setup Java for Linux'
     - pwsh: |
         Write-Host "Java_HOME: $JAVA_HOME"
         Get-Command mvn
