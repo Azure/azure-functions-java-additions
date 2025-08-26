@@ -1,4 +1,4 @@
-![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
+![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/refs/heads/main/eng/res/functions.png)
 
 # Core library for Azure Java Functions
 This repo contains core library for building Azure Java Functions. `azure-functions-java-core-library` contains base class for building Azure Java Functions. 
