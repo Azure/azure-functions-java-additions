@@ -29,6 +29,14 @@ public final class FunctionsOpenTelemetry {
      * Ensures that the OpenTelemetry SDK is created.
      */
     public static void initialize() {
+        if (isAgentPresent()) {
+            LOGGER.info("OTel Java agent detected; using GlobalOpenTelemetry from agent.");
+            return;
+        }
+        else {
+            LOGGER.info("OTel Java agent not detected; initializing SDK.");
+        }
+        
         if (sdk == null) {
             synchronized (FunctionsOpenTelemetry.class) {
                 if (sdk == null) {
@@ -38,8 +46,37 @@ public final class FunctionsOpenTelemetry {
         }
     }
 
+    private static boolean isAgentPresent() {
+        try {
+            Class.forName("io.opentelemetry.javaagent.OpenTelemetryAgent", false,
+                          FunctionsOpenTelemetry.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException ignored) {
+            return false;
+        }
+    }
+
     public static OpenTelemetrySdk sdk() {
-        return sdk;
+        initialize(); // Ensure SDK is initialized
+        if (sdk != null) {
+            return sdk;
+        }
+        // When agent is present, we don't have direct access to OpenTelemetrySdk
+        // This method should not be called in agent scenarios
+        throw new IllegalStateException("OpenTelemetry agent is present. Use GlobalOpenTelemetry.get() instead of sdk() when agent is detected.");
+    }
+
+    /**
+     * Returns the appropriate OpenTelemetry instance - either the SDK when no agent is present,
+     * or the global OpenTelemetry when an agent is detected.
+     */
+    private static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
+        initialize(); // Ensure SDK is initialized
+        if (sdk != null) {
+            return sdk;
+        }
+        // When agent is present, use GlobalOpenTelemetry
+        return GlobalOpenTelemetry.get();
     }
 
     /**
@@ -138,7 +175,7 @@ public final class FunctionsOpenTelemetry {
             throw new IllegalArgumentException("tracerName must be non-null and non-empty");
         }
 
-        return sdk().getTracer(tracerName)
+        return getOpenTelemetry().getTracer(tracerName)
                 .spanBuilder(spanName)
                 .setParent(parent == null ? Context.current() : parent)
                 .setSpanKind(kind == null ? SpanKind.INTERNAL : kind)
@@ -151,7 +188,7 @@ public final class FunctionsOpenTelemetry {
             TraceContext traceContext,
             SpanKind kind) {
 
-        Context parent = sdk().getPropagators()
+        Context parent = getOpenTelemetry().getPropagators()
                 .getTextMapPropagator()
                 .extract(Context.current(), traceContext, TRACE_CONTEXT_GETTER);
         return startSpan(tracerName, spanName, parent, kind);
