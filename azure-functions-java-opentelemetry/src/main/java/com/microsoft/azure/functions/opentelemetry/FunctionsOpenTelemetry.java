@@ -22,61 +22,78 @@ public final class FunctionsOpenTelemetry {
     private static volatile OpenTelemetrySdk sdk;
 
     public static void setLogger(Logger logger) {
-        LOGGER = logger;
+        if (logger != null) {
+            LOGGER = logger;
+        }
     }
 
     /**
-     * Ensures that the OpenTelemetry SDK is created.
+     * Ensures that the OpenTelemetry SDK is created if not already set globally.
      */
     public static void initialize() {
-        if (isAgentPresent()) {
-            LOGGER.info("OTel Java agent detected; using GlobalOpenTelemetry from agent.");
-            return;
-        }
-        else {
-            LOGGER.info("OTel Java agent not detected; initializing SDK.");
-        }
-        
-        if (sdk == null) {
-            synchronized (FunctionsOpenTelemetry.class) {
-                if (sdk == null) {
-                    sdk = buildSdk();
+        if (isNoOp(GlobalOpenTelemetry.get())) {
+            LOGGER.info("No global OpenTelemetry found; initializing SDK.");
+            if (sdk == null) {
+                synchronized (FunctionsOpenTelemetry.class) {
+                    if (sdk == null) {
+                        sdk = buildSdk();
+                    }
                 }
             }
+        } else {
+            LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
         }
     }
 
-    private static boolean isAgentPresent() {
-        try {
-            Class.forName("io.opentelemetry.javaagent.OpenTelemetryAgent", false,
-                          FunctionsOpenTelemetry.class.getClassLoader());
+    /**
+     * Checks if the given OpenTelemetry instance is a no-op (default) implementation.
+     * We check this by seeing if the tracer name equals the class name, which indicates
+     * the default no-op implementation.
+     */
+    private static boolean isNoOp(io.opentelemetry.api.OpenTelemetry otel) {
+        if (otel == null) {
             return true;
-        } catch (ClassNotFoundException ignored) {
+        }
+        try {
+            // The no-op implementation returns a tracer with the class name as its name
+            String tracerName = otel.getTracer("test").getClass().getSimpleName();
+            return tracerName.contains("Noop") || tracerName.contains("NoOp") || 
+                   otel.getClass().getName().contains("DefaultOpenTelemetry");
+        } catch (Exception e) {
+            // If we can't determine, assume it's not a no-op
             return false;
         }
     }
 
+    /**
+     * Returns the OpenTelemetrySdk instance if available.
+     * 
+     * @return the SDK instance
+     * @throws IllegalStateException if no SDK is available (e.g., when using an agent)
+     */
     public static OpenTelemetrySdk sdk() {
-        initialize(); // Ensure SDK is initialized
+        initialize(); // Ensure initialization is attempted
         if (sdk != null) {
             return sdk;
         }
-        // When agent is present, we don't have direct access to OpenTelemetrySdk
-        // This method should not be called in agent scenarios
-        throw new IllegalStateException("OpenTelemetry agent is present. Use GlobalOpenTelemetry.get() instead of sdk() when agent is detected.");
+        // If the global instance is an OpenTelemetrySdk, return it
+        io.opentelemetry.api.OpenTelemetry global = GlobalOpenTelemetry.get();
+        if (global instanceof OpenTelemetrySdk) {
+            return (OpenTelemetrySdk) global;
+        }
+        throw new IllegalStateException("No OpenTelemetrySdk available. Use getOpenTelemetry() for general tracing.");
     }
 
     /**
-     * Returns the appropriate OpenTelemetry instance - either the SDK when no agent is present,
-     * or the global OpenTelemetry when an agent is detected.
+     * Returns the appropriate OpenTelemetry instance - either our SDK when we created it,
+     * or the global OpenTelemetry when an agent or other setup is detected.
+     * 
+     * @return the OpenTelemetry instance to use for tracing and propagation
      */
-    private static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
-        initialize(); // Ensure SDK is initialized
-        if (sdk != null) {
-            return sdk;
-        }
-        // When agent is present, use GlobalOpenTelemetry
-        return GlobalOpenTelemetry.get();
+    public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
+        initialize(); // Ensure initialization is attempted
+        // Use our SDK if we created one, otherwise use whatever is set globally
+        return (sdk != null) ? sdk : GlobalOpenTelemetry.get();
     }
 
     /**
@@ -106,6 +123,7 @@ public final class FunctionsOpenTelemetry {
             }
 
             sdk = builder.build().getOpenTelemetrySdk();
+            // Set as global instance so it's available to other libraries
             GlobalOpenTelemetry.set(sdk);
 
             LOGGER.info("OpenTelemetry SDK initialised successfully.");
@@ -115,6 +133,7 @@ public final class FunctionsOpenTelemetry {
                     "Failed to initialise OpenTelemetry SDK – falling back to no-op", ex);
 
             sdk = OpenTelemetrySdk.builder().build();
+            // Set fallback SDK as global instance
             GlobalOpenTelemetry.set(sdk);
         }
 
