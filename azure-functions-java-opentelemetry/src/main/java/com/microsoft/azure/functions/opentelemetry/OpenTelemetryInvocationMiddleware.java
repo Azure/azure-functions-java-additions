@@ -26,7 +26,7 @@ public class OpenTelemetryInvocationMiddleware implements Middleware {
         String tracerName = "azure.functions.worker";
 
         FunctionsOpenTelemetry.setLogger(context.getLogger());
-        Span invocationSpan = FunctionsOpenTelemetry.startSpan(spanName, tracerName, context.getTraceContext(), SpanKind.INTERNAL);
+        Span invocationSpan = FunctionsOpenTelemetry.startSpan(tracerName, spanName, context.getTraceContext(), SpanKind.INTERNAL);
 
         try (Scope ignored = invocationSpan.makeCurrent()) {
             invocationSpan.setAttribute("faas.invocation_id", context.getInvocationId());
