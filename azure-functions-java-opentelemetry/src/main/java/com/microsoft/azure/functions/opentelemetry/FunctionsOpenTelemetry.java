@@ -31,7 +31,10 @@ public final class FunctionsOpenTelemetry {
      * Ensures that the OpenTelemetry SDK is created if not already set globally.
      */
     public static void initialize() {
-        if (isNoOp(GlobalOpenTelemetry.get())) {
+        // Check if GlobalOpenTelemetry has already been configured
+        io.opentelemetry.api.OpenTelemetry global = GlobalOpenTelemetry.get();
+        
+        if (isNoOp(global)) {
             LOGGER.info("No global OpenTelemetry found; initializing SDK.");
             if (sdk == null) {
                 synchronized (FunctionsOpenTelemetry.class) {
@@ -42,6 +45,10 @@ public final class FunctionsOpenTelemetry {
             }
         } else {
             LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
+            // Extract the SDK if it's available for our sdk() method
+            if (global instanceof OpenTelemetrySdk) {
+                sdk = (OpenTelemetrySdk) global;
+            }
         }
     }
 
@@ -114,17 +121,17 @@ public final class FunctionsOpenTelemetry {
             final AutoConfiguredOpenTelemetrySdkBuilder builder =
                     AutoConfiguredOpenTelemetrySdk.builder();
 
-            builder.addResourceCustomizer(
-                    (existing, unused) -> existing.merge(FunctionsResourceDetector.getResource()));
+            // Note: Functions resource attributes are automatically added via 
+            // FunctionsResourceProvider (SPI mechanism)
 
             if (isAppInsightsEnabled()) {
                 final String connStr = System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
                 applyAzureMonitor(builder, connStr);
             }
 
-            sdk = builder.build().getOpenTelemetrySdk();
-            // Set as global instance so it's available to other libraries
-            GlobalOpenTelemetry.set(sdk);
+            // AutoConfiguredOpenTelemetrySdk automatically registers globally when built
+            AutoConfiguredOpenTelemetrySdk autoSdk = builder.build();
+            sdk = autoSdk.getOpenTelemetrySdk();
 
             LOGGER.info("OpenTelemetry SDK initialised successfully.");
 
@@ -132,9 +139,8 @@ public final class FunctionsOpenTelemetry {
             LOGGER.log(Level.SEVERE,
                     "Failed to initialise OpenTelemetry SDK – falling back to no-op", ex);
 
-            sdk = OpenTelemetrySdk.builder().build();
-            // Set fallback SDK as global instance
-            GlobalOpenTelemetry.set(sdk);
+            // Use buildAndRegisterGlobal to avoid double registration
+            sdk = OpenTelemetrySdk.builder().buildAndRegisterGlobal();
         }
 
         // ---- Add shutdown hook (needs a final reference) --------------------------
