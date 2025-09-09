@@ -14,7 +14,7 @@
 
     <groupId>com.microsoft.azure.functions</groupId>
     <artifactId>azure-functions-java-opentelemetry</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <name>Microsoft Azure Functions Java OpenTelemetry Support</name>
