@@ -20,6 +20,7 @@ public final class FunctionsOpenTelemetry {
 
     private static Logger LOGGER = Logger.getLogger(FunctionsOpenTelemetry.class.getSimpleName());
     private static volatile OpenTelemetrySdk sdk;
+    private static volatile boolean initialized = false;
 
     public static void setLogger(Logger logger) {
         if (logger != null) {
@@ -28,27 +29,46 @@ public final class FunctionsOpenTelemetry {
     }
 
     /**
-     * Ensures that the OpenTelemetry SDK is created if not already set globally.
+     * Ensures that OpenTelemetry is initialized. This method is safe to call multiple times
+     * and is optimized for performance after the first initialization.
      */
     public static void initialize() {
-        // Check if GlobalOpenTelemetry has already been configured
-        io.opentelemetry.api.OpenTelemetry global = GlobalOpenTelemetry.get();
+        if (initialized) {
+            return; // Fast path - no synchronization needed after initialization
+        }
         
-        if (isNoOp(global)) {
-            LOGGER.info("No global OpenTelemetry found; initializing SDK.");
-            if (sdk == null) {
-                synchronized (FunctionsOpenTelemetry.class) {
-                    if (sdk == null) {
-                        sdk = buildSdk();
-                    }
+        synchronized (FunctionsOpenTelemetry.class) {
+            if (initialized) {
+                return; // Double-check after acquiring lock
+            }
+            
+            // Check if GlobalOpenTelemetry has already been configured
+            io.opentelemetry.api.OpenTelemetry global = GlobalOpenTelemetry.get();
+            
+            if (isNoOp(global)) {
+                LOGGER.info("No global OpenTelemetry found; initializing SDK.");
+                if (sdk == null) {
+                    sdk = buildSdk();
+                }
+            } else {
+                LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
+                // Extract the SDK if it's available for our sdk() method
+                if (global instanceof OpenTelemetrySdk) {
+                    sdk = (OpenTelemetrySdk) global;
                 }
             }
-        } else {
-            LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
-            // Extract the SDK if it's available for our sdk() method
-            if (global instanceof OpenTelemetrySdk) {
-                sdk = (OpenTelemetrySdk) global;
-            }
+            
+            initialized = true;
+        }
+    }
+
+    /**
+     * Internal method to ensure initialization with zero overhead after first call.
+     * This provides automatic initialization for library methods while maintaining performance.
+     */
+    private static void ensureInitialized() {
+        if (!initialized) {
+            initialize();
         }
     }
 
@@ -79,7 +99,7 @@ public final class FunctionsOpenTelemetry {
      * @throws IllegalStateException if no SDK is available (e.g., when using an agent)
      */
     public static OpenTelemetrySdk sdk() {
-        initialize(); // Ensure initialization is attempted
+        ensureInitialized(); // Fast path after first call
         if (sdk != null) {
             return sdk;
         }
@@ -98,7 +118,7 @@ public final class FunctionsOpenTelemetry {
      * @return the OpenTelemetry instance to use for tracing and propagation
      */
     public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
-        initialize(); // Ensure initialization is attempted
+        ensureInitialized(); // Fast path after first call
         // Use our SDK if we created one, otherwise use whatever is set globally
         return (sdk != null) ? sdk : GlobalOpenTelemetry.get();
     }
