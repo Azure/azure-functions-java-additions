@@ -36,6 +36,7 @@ public final class FunctionsOpenTelemetry {
 
     /**
      * Sets the logger instance used by this class.
+     * @param logger the logger instance to use
      */
     public static void setLogger(Logger logger) {
         if (logger != null) {
@@ -104,6 +105,7 @@ public final class FunctionsOpenTelemetry {
     /**
      * Returns the OpenTelemetry SDK instance if available.
      * For general tracing, prefer {@link #getOpenTelemetry()}.
+     * @return the OpenTelemetry SDK instance, or null if not available
      */
     public static OpenTelemetrySdk sdk() {
         ensureInitialized();
@@ -119,6 +121,7 @@ public final class FunctionsOpenTelemetry {
 
     /**
      * Returns the OpenTelemetry instance for tracing operations.
+     * @return the OpenTelemetry instance
      */
     public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
         ensureInitialized();
@@ -218,6 +221,11 @@ public final class FunctionsOpenTelemetry {
 
     /**
      * Creates and starts a new span.
+     * @param tracerName the name of the tracer
+     * @param spanName the name of the span
+     * @param parent the parent context
+     * @param kind the span kind
+     * @return the started span
      */
     public static Span startSpan(String tracerName, String spanName, Context parent, SpanKind kind) {
         validateNonEmpty(spanName, "spanName");
@@ -232,6 +240,11 @@ public final class FunctionsOpenTelemetry {
 
     /**
      * Creates and starts a new span with trace context from Azure Functions.
+     * @param tracerName the name of the tracer
+     * @param spanName the name of the span
+     * @param traceContext the Azure Functions trace context
+     * @param kind the span kind
+     * @return the started span
      */
     public static Span startSpan(String tracerName, String spanName, TraceContext traceContext, SpanKind kind) {
         Context parent = getOpenTelemetry().getPropagators()
@@ -242,6 +255,10 @@ public final class FunctionsOpenTelemetry {
 
     /**
      * Convenience method using the default tracer name.
+     * @param spanName the name of the span
+     * @param traceContext the Azure Functions trace context
+     * @param kind the span kind
+     * @return the started span
      */
     public static Span startSpan(String spanName, TraceContext traceContext, SpanKind kind) {
         return startSpan(DEFAULT_TRACER_NAME, spanName, traceContext, kind);
