@@ -23,10 +23,11 @@ public class OpenTelemetryInvocationMiddleware implements Middleware {
     @Override
     public void invoke(MiddlewareContext context, MiddlewareChain chain) throws Exception {
         String spanName = context.getFunctionName();
-        String tracerName = "azure.functions.worker";
-
+        
+        // Set logger once per invocation (could be optimized further to once per startup)
         FunctionsOpenTelemetry.setLogger(context.getLogger());
-        Span invocationSpan = FunctionsOpenTelemetry.startSpan(tracerName, spanName, context.getTraceContext(), SpanKind.INTERNAL);
+        
+        Span invocationSpan = FunctionsOpenTelemetry.startSpan(spanName, context.getTraceContext(), SpanKind.INTERNAL);
 
         try (Scope ignored = invocationSpan.makeCurrent()) {
             invocationSpan.setAttribute("faas.invocation_id", context.getInvocationId());
@@ -35,10 +36,10 @@ public class OpenTelemetryInvocationMiddleware implements Middleware {
             // Delegate to the rest of the chain
             chain.doNext(context);
 
-        } catch (Throwable throwable) {          // capture any user exception
+        } catch (Throwable throwable) {
             invocationSpan.recordException(throwable);
             invocationSpan.setStatus(StatusCode.ERROR, throwable.getMessage());
-            throw throwable;                     // keep behaviour unchanged
+            throw throwable;
         } finally {
             invocationSpan.end();
         }

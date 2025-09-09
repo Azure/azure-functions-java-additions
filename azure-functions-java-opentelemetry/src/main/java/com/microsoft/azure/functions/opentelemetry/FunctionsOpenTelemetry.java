@@ -17,9 +17,18 @@ import java.util.logging.Logger;
 
 public final class FunctionsOpenTelemetry {
 
+    // Configuration constants
+    private static final String DEFAULT_TRACER_NAME = "azure.functions.worker";
+    private static final String APP_INSIGHTS_ENABLE_ENV = "JAVA_APPLICATIONINSIGHTS_ENABLE_TELEMETRY";
+    private static final String APP_INSIGHTS_CONNECTION_STRING_ENV = "APPLICATIONINSIGHTS_CONNECTION_STRING";
+    
+    // Azure Monitor reflection constants
+    private static final String AZURE_MONITOR_CLASS = "com.azure.monitor.opentelemetry.autoconfigure.AzureMonitorAutoConfigure";
+    private static final String AUTO_CUSTOMIZER_CLASS = "io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer";
 
     private static Logger LOGGER = Logger.getLogger(FunctionsOpenTelemetry.class.getSimpleName());
     private static volatile OpenTelemetrySdk sdk;
+    private static volatile io.opentelemetry.api.OpenTelemetry globalOtel;
     private static volatile boolean initialized = false;
 
     public static void setLogger(Logger logger) {
@@ -43,18 +52,19 @@ public final class FunctionsOpenTelemetry {
             }
             
             // Check if GlobalOpenTelemetry has already been configured
-            io.opentelemetry.api.OpenTelemetry global = GlobalOpenTelemetry.get();
+            globalOtel = GlobalOpenTelemetry.get();
             
-            if (isNoOp(global)) {
+            if (isNoOp(globalOtel)) {
                 LOGGER.info("No global OpenTelemetry found; initializing SDK.");
                 if (sdk == null) {
                     sdk = buildSdk();
+                    globalOtel = sdk; // Cache our SDK as the global instance
                 }
             } else {
                 LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
                 // Extract the SDK if it's available for our sdk() method
-                if (global instanceof OpenTelemetrySdk) {
-                    sdk = (OpenTelemetrySdk) global;
+                if (globalOtel instanceof OpenTelemetrySdk) {
+                    sdk = (OpenTelemetrySdk) globalOtel;
                 }
             }
             
@@ -74,22 +84,16 @@ public final class FunctionsOpenTelemetry {
 
     /**
      * Checks if the given OpenTelemetry instance is a no-op (default) implementation.
-     * We check this by seeing if the tracer name equals the class name, which indicates
-     * the default no-op implementation.
      */
     private static boolean isNoOp(io.opentelemetry.api.OpenTelemetry otel) {
         if (otel == null) {
             return true;
         }
-        try {
-            // The no-op implementation returns a tracer with the class name as its name
-            String tracerName = otel.getTracer("test").getClass().getSimpleName();
-            return tracerName.contains("Noop") || tracerName.contains("NoOp") || 
-                   otel.getClass().getName().contains("DefaultOpenTelemetry");
-        } catch (Exception e) {
-            // If we can't determine, assume it's not a no-op
-            return false;
-        }
+        // Check class name directly instead of creating tracer instances
+        String className = otel.getClass().getName();
+        return className.contains("Noop") || 
+               className.contains("NoOp") || 
+               className.contains("DefaultOpenTelemetry");
     }
 
     /**
@@ -99,14 +103,13 @@ public final class FunctionsOpenTelemetry {
      * @throws IllegalStateException if no SDK is available (e.g., when using an agent)
      */
     public static OpenTelemetrySdk sdk() {
-        ensureInitialized(); // Fast path after first call
+        ensureInitialized();
         if (sdk != null) {
             return sdk;
         }
-        // If the global instance is an OpenTelemetrySdk, return it
-        io.opentelemetry.api.OpenTelemetry global = GlobalOpenTelemetry.get();
-        if (global instanceof OpenTelemetrySdk) {
-            return (OpenTelemetrySdk) global;
+        // Use cached global instance instead of calling GlobalOpenTelemetry.get() again
+        if (globalOtel instanceof OpenTelemetrySdk) {
+            return (OpenTelemetrySdk) globalOtel;
         }
         throw new IllegalStateException("No OpenTelemetrySdk available. Use getOpenTelemetry() for general tracing.");
     }
@@ -118,9 +121,9 @@ public final class FunctionsOpenTelemetry {
      * @return the OpenTelemetry instance to use for tracing and propagation
      */
     public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
-        ensureInitialized(); // Fast path after first call
-        // Use our SDK if we created one, otherwise use whatever is set globally
-        return (sdk != null) ? sdk : GlobalOpenTelemetry.get();
+        ensureInitialized();
+        // Use cached global instance instead of calling GlobalOpenTelemetry.get() again
+        return (sdk != null) ? sdk : globalOtel;
     }
 
     /**
@@ -145,7 +148,7 @@ public final class FunctionsOpenTelemetry {
             // FunctionsResourceProvider (SPI mechanism)
 
             if (isAppInsightsEnabled()) {
-                final String connStr = System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
+                final String connStr = System.getenv(APP_INSIGHTS_CONNECTION_STRING_ENV);
                 applyAzureMonitor(builder, connStr);
             }
 
@@ -172,8 +175,7 @@ public final class FunctionsOpenTelemetry {
     }
 
     private static boolean isAppInsightsEnabled() {
-        return Boolean.parseBoolean(
-                System.getenv("JAVA_APPLICATIONINSIGHTS_ENABLE_TELEMETRY"));
+        return Boolean.parseBoolean(System.getenv(APP_INSIGHTS_ENABLE_ENV));
     }
 
     private static void applyAzureMonitor(AutoConfiguredOpenTelemetrySdkBuilder builder, String connStr) {
@@ -182,11 +184,8 @@ public final class FunctionsOpenTelemetry {
             ClassLoader cl = FunctionsOpenTelemetry.class.getClassLoader();
 
             // Resolve the types we need with the same CL
-            Class<?> autoCfgClass = Class.forName(
-                    "com.azure.monitor.opentelemetry.autoconfigure.AzureMonitorAutoConfigure", false, cl);
-
-            Class<?> customizerIfc = Class.forName(
-                    "io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer", false, cl);
+            Class<?> autoCfgClass = Class.forName(AZURE_MONITOR_CLASS, false, cl);
+            Class<?> customizerIfc = Class.forName(AUTO_CUSTOMIZER_CLASS, false, cl);
 
             // Directly look up the exact overload we expect
             Method customize =
@@ -207,18 +206,18 @@ public final class FunctionsOpenTelemetry {
 
     private static final TextMapGetter<TraceContext> TRACE_CONTEXT_GETTER = TraceContextTextMapGetter.INSTANCE;
 
-    public static Span startSpan(
-            String tracerName,
-            String spanName,
-            Context parent,
-            SpanKind kind) {
+    /**
+     * Validates that the given string is non-null and non-empty.
+     */
+    private static void validateNonEmpty(String value, String paramName) {
+        if (value == null || value.isEmpty()) {
+            throw new IllegalArgumentException(paramName + " must be non-null and non-empty");
+        }
+    }
 
-        if (spanName == null || spanName.isEmpty()) {
-            throw new IllegalArgumentException("spanName must be non-null and non-empty");
-        }
-        if (tracerName == null || tracerName.isEmpty()) {
-            throw new IllegalArgumentException("tracerName must be non-null and non-empty");
-        }
+    public static Span startSpan(String tracerName, String spanName, Context parent, SpanKind kind) {
+        validateNonEmpty(spanName, "spanName");
+        validateNonEmpty(tracerName, "tracerName");
 
         return getOpenTelemetry().getTracer(tracerName)
                 .spanBuilder(spanName)
@@ -227,15 +226,15 @@ public final class FunctionsOpenTelemetry {
                 .startSpan();
     }
 
-    public static Span startSpan(
-            String tracerName,
-            String spanName,
-            TraceContext traceContext,
-            SpanKind kind) {
-
+    public static Span startSpan(String tracerName, String spanName, TraceContext traceContext, SpanKind kind) {
         Context parent = getOpenTelemetry().getPropagators()
                 .getTextMapPropagator()
                 .extract(Context.current(), traceContext, TRACE_CONTEXT_GETTER);
         return startSpan(tracerName, spanName, parent, kind);
+    }
+
+    // Convenience method with default tracer name
+    public static Span startSpan(String spanName, TraceContext traceContext, SpanKind kind) {
+        return startSpan(DEFAULT_TRACER_NAME, spanName, traceContext, kind);
     }
 }
