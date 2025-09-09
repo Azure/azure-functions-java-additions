@@ -5,24 +5,26 @@ import io.opentelemetry.sdk.autoconfigure.spi.ResourceProvider;
 import io.opentelemetry.sdk.resources.Resource;
 
 /**
- * Resource provider that integrates Azure Functions-specific resource detection
- * with OpenTelemetry agents via SPI (Service Provider Interface).
+ * SPI-based resource provider for Azure Functions resource detection.
  * 
- * This provider is automatically discovered by OpenTelemetry agents and
- * AutoConfiguredOpenTelemetrySdk, ensuring Functions-specific attributes
- * are included regardless of how OpenTelemetry is initialized.
+ * <p>Automatically contributes Azure Functions-specific resource attributes
+ * to any OpenTelemetry configuration via the SPI mechanism.
  */
 public class FunctionsResourceProvider implements ResourceProvider {
 
+    /**
+     * Creates a resource with Azure Functions-specific attributes.
+     */
     @Override
     public Resource createResource(ConfigProperties config) {
         return FunctionsResourceDetector.getResource();
     }
 
+    /**
+     * Returns the priority order for this resource provider.
+     */
     @Override
     public int order() {
-        // Return a higher priority to ensure Functions attributes take precedence
-        // over default resource detection
         return 100;
     }
 }

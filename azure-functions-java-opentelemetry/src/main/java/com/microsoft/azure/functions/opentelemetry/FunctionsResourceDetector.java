@@ -5,52 +5,86 @@ import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.sdk.resources.Resource;
 
 /**
- * Detects a set of well-known Azure Functions environment variables and maps them
- * to <a href="https://opentelemetry.io/docs/specs/semconv/resource/">OpenTelemetry
- * semantic resource attributes</a>.
- * <p>
- * The detector is intentionally simple—no network calls or reflection—so it can
- * be invoked very early in the worker start-up sequence. When running locally,
- * only {@code service.name} is set; when running on the platform, additional
- * cloud-specific attributes are included.
- * </p>
+ * Detects Azure Functions environment variables and maps them to OpenTelemetry resource attributes.
+ * 
+ * <p>This detector implements Azure Functions resource detection according to the
+ * <a href="https://opentelemetry.io/docs/specs/semconv/resource/">OpenTelemetry
+ * semantic resource conventions</a>. It provides a lightweight, no-dependency approach
+ * to resource detection that can be invoked early in the worker startup sequence.
+ * 
+ * <p>The detector operates in two modes:
+ * <ul>
+ *   <li><strong>Local development:</strong> Only {@code service.name} is set to a default value</li>
+ *   <li><strong>Azure-hosted:</strong> Full cloud resource attributes are populated from environment variables</li>
+ * </ul>
+ * 
+ * <p>Detected attributes follow OpenTelemetry semantic conventions:
+ * <ul>
+ *   <li>{@code service.name} - Logical service identifier (function app name)</li>
+ *   <li>{@code cloud.provider} - Cloud provider ("azure")</li>
+ *   <li>{@code cloud.platform} - Cloud platform ("azure_functions")</li>
+ *   <li>{@code cloud.region} - Azure region (e.g., "westus2")</li>
+ *   <li>{@code cloud.resource.id} - Full ARM resource ID</li>
+ *   <li>{@code deployment.environment} - Deployment slot name</li>
+ * </ul>
  */
 public final class FunctionsResourceDetector {
 
-    /** {@code cloud.provider} – fixed to {@code "azure"} when running on Azure. */
+    // OpenTelemetry semantic convention attribute names
+    
+    /** OpenTelemetry attribute: {@code cloud.provider} - Cloud provider name. */
     public static final String CLOUD_PROVIDER = "cloud.provider";
-    /** {@code cloud.platform} – {@code "azure_functions"} for hosted apps. */
+    
+    /** OpenTelemetry attribute: {@code cloud.platform} - Cloud platform identifier. */
     public static final String CLOUD_PLATFORM = "cloud.platform";
-    /** {@code cloud.region} – Azure region (e.g. {@code westus2}). */
+    
+    /** OpenTelemetry attribute: {@code cloud.region} - Cloud region identifier. */
     public static final String CLOUD_REGION = "cloud.region";
-    /** {@code cloud.resource.id} – Full ARM resource ID of the function app. */
+    
+    /** OpenTelemetry attribute: {@code cloud.resource.id} - Cloud resource identifier. */
     public static final String CLOUD_RESOURCE_ID = "cloud.resource.id";
-    /** {@code deployment.environment} – Function slot name (e.g. {@code production}). */
+    
+    /** OpenTelemetry attribute: {@code deployment.environment} - Deployment environment name. */
     public static final String DEPLOYMENT_ENVIRONMENT = "deployment.environment";
-    /** {@code service.name} – Logical service identifier (function-app name). */
+    
+    /** OpenTelemetry attribute: {@code service.name} - Logical service name. */
     public static final String SERVICE_NAME = "service.name";
 
-    // ─── Well-known Azure Functions environment variables ────────────────────────
+    // Azure Functions environment variable names
+    
+    /** Azure Functions environment variable: Function app name. */
     public static final String WEBSITE_SITE_NAME    = "WEBSITE_SITE_NAME";
+    
+    /** Azure Functions environment variable: Azure region name. */
     public static final String REGION_NAME          = "REGION_NAME";
+    
+    /** Azure Functions environment variable: Resource group name. */
     public static final String WEBSITE_RESOURCE_GROUP = "WEBSITE_RESOURCE_GROUP";
+    
+    /** Azure Functions environment variable: Subscription and stamp information. */
     public static final String WEBSITE_OWNER_NAME   = "WEBSITE_OWNER_NAME";
+    
+    /** Azure Functions environment variable: Deployment slot name. */
     public static final String WEBSITE_SLOT_NAME    = "WEBSITE_SLOT_NAME";
 
     /**
-     * Builds an {@link io.opentelemetry.sdk.resources.Resource Resource} populated
-     * with attributes derived from the current process environment.
+     * Creates a Resource populated with Azure Functions-specific attributes.
+     * 
+     * <p>This method examines well-known Azure Functions environment variables and
+     * maps them to OpenTelemetry semantic resource attributes. The detection is
+     * designed to be lightweight and free of external dependencies.
+     * 
+     * <p>Resource construction behavior:
+     * <ul>
+     *   <li><strong>Always includes:</strong> {@code service.name} (function app name or default)</li>
+     *   <li><strong>Azure-hosted apps:</strong> Cloud provider, platform, region, and resource ID</li>
+     *   <li><strong>Local development:</strong> Only basic service identification</li>
+     *   <li><strong>Deployment environment:</strong> Slot name or "production" default</li>
+     * </ul>
      *
-     * @return a new immutable {@code Resource} instance.
-     *         <ul>
-     *           <li>Always contains at least {@code service.name}.</li>
-     *           <li>Contains {@code cloud.*} attributes when running on Azure Functions.</li>
-     *           <li>Defaults {@code deployment.environment} to {@code production} if the
-     *               slot name is not present.</li>
-     *         </ul>
+     * @return an immutable Resource containing detected attributes
      */
     public static Resource getResource() {
-
         final String siteName      = System.getenv(WEBSITE_SITE_NAME);
         final String region        = System.getenv(REGION_NAME);
         final String resourceGroup = System.getenv(WEBSITE_RESOURCE_GROUP);
@@ -59,7 +93,7 @@ public final class FunctionsResourceDetector {
 
         final AttributesBuilder attrBuilder = Attributes.builder();
 
-        // ─── Basic service + cloud metadata ──────────────────────────────────────
+        // Service identification and cloud metadata
         if (siteName != null && !siteName.isEmpty()) {
             attrBuilder.put(SERVICE_NAME, siteName)
                     .put(CLOUD_PROVIDER, "azure")
@@ -73,7 +107,7 @@ public final class FunctionsResourceDetector {
             attrBuilder.put(CLOUD_REGION, region);
         }
 
-        // Construct fully-qualified ARM resource ID when all pieces are present
+        // Construct fully-qualified ARM resource ID when all components are available
         final String subscriptionId = extractSubscriptionId(ownerName);
         if (subscriptionId != null && resourceGroup != null && siteName != null) {
             String resourceId = String.format(
@@ -82,7 +116,7 @@ public final class FunctionsResourceDetector {
             attrBuilder.put(CLOUD_RESOURCE_ID, resourceId);
         }
 
-        // ─── Deployment slot / environment ───────────────────────────────────────
+        // Deployment environment (slot name)
         if (slotName == null || slotName.isEmpty()) {
             slotName = "production";
         }
@@ -92,11 +126,14 @@ public final class FunctionsResourceDetector {
     }
 
     /**
-     * Utility that parses {@code WEBSITE_OWNER_NAME} to extract the subscription ID.
-     * <p>The variable normally has the form {@code <subscriptionId>+<stamp>}.</p>
+     * Extracts the Azure subscription ID from the WEBSITE_OWNER_NAME environment variable.
+     * 
+     * <p>The {@code WEBSITE_OWNER_NAME} variable typically contains the subscription ID
+     * followed by a stamp identifier in the format: {@code <subscriptionId>+<stamp>}.
+     * This method extracts only the subscription ID portion.
      *
-     * @param ownerName the raw {@code WEBSITE_OWNER_NAME} value
-     * @return the subscription ID, or {@code null} if it cannot be parsed
+     * @param ownerName the raw value of the WEBSITE_OWNER_NAME environment variable
+     * @return the subscription ID if successfully parsed, null otherwise
      */
     public static String extractSubscriptionId(final String ownerName) {
         if (ownerName == null || ownerName.isEmpty()) {
@@ -106,6 +143,8 @@ public final class FunctionsResourceDetector {
         return (idx > 0) ? ownerName.substring(0, idx) : null;
     }
 
-    // Prevent instantiation
+    /**
+     * Private constructor to prevent instantiation of this utility class.
+     */
     private FunctionsResourceDetector() { }
 }
