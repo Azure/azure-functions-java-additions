@@ -32,7 +32,6 @@ public final class FunctionsOpenTelemetry {
     private static Logger LOGGER = Logger.getLogger(FunctionsOpenTelemetry.class.getSimpleName());
     private static volatile OpenTelemetrySdk sdk;
     private static volatile io.opentelemetry.api.OpenTelemetry globalOtel;
-    private static volatile boolean initialized = false;
 
     /**
      * Sets the logger instance used by this class.
@@ -49,33 +48,32 @@ public final class FunctionsOpenTelemetry {
      * Safe to call multiple times.
      */
     public static void initialize() {
-        if (initialized) {
+        if (globalOtel != null) {
             return; // Fast path - no synchronization needed after initialization
         }
         
         synchronized (FunctionsOpenTelemetry.class) {
-            if (initialized) {
+            if (globalOtel != null) {
                 return; // Double-check after acquiring lock
             }
             
             // Check if GlobalOpenTelemetry has already been configured
-            globalOtel = GlobalOpenTelemetry.get();
+            io.opentelemetry.api.OpenTelemetry candidate = GlobalOpenTelemetry.get();
             
-            if (isNoOp(globalOtel)) {
+            if (isNoOp(candidate)) {
                 LOGGER.info("No global OpenTelemetry found; initializing SDK.");
                 if (sdk == null) {
                     sdk = buildSdk();
-                    globalOtel = sdk; // Cache our SDK as the global instance
                 }
+                globalOtel = sdk; // Set our SDK as the global instance
             } else {
                 LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
+                globalOtel = candidate; // Set the agent's instance
                 // Extract the SDK if it's available for our sdk() method
-                if (globalOtel instanceof OpenTelemetrySdk) {
-                    sdk = (OpenTelemetrySdk) globalOtel;
+                if (candidate instanceof OpenTelemetrySdk) {
+                    sdk = (OpenTelemetrySdk) candidate;
                 }
             }
-            
-            initialized = true;
         }
     }
 
@@ -83,7 +81,7 @@ public final class FunctionsOpenTelemetry {
      * Ensures initialization has occurred.
      */
     private static void ensureInitialized() {
-        if (!initialized) {
+        if (globalOtel == null) {
             initialize();
         }
     }
