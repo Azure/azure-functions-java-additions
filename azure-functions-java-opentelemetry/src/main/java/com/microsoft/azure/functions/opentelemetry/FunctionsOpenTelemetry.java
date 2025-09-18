@@ -30,7 +30,6 @@ public final class FunctionsOpenTelemetry {
     private static final String AUTO_CUSTOMIZER_CLASS = "io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer";
 
     private static Logger LOGGER = Logger.getLogger(FunctionsOpenTelemetry.class.getSimpleName());
-    private static volatile OpenTelemetrySdk sdk;
     private static volatile io.opentelemetry.api.OpenTelemetry globalOtel;
 
     /**
@@ -62,17 +61,10 @@ public final class FunctionsOpenTelemetry {
             
             if (isNoOp(candidate)) {
                 LOGGER.info("No global OpenTelemetry found; initializing SDK.");
-                if (sdk == null) {
-                    sdk = buildSdk();
-                }
-                globalOtel = sdk; // Set our SDK as the global instance
+                globalOtel = buildSdk(); // Set our SDK as the global instance
             } else {
                 LOGGER.info("GlobalOpenTelemetry already set; using existing instance.");
                 globalOtel = candidate; // Set the agent's instance
-                // Extract the SDK if it's available for our sdk() method
-                if (candidate instanceof OpenTelemetrySdk) {
-                    sdk = (OpenTelemetrySdk) candidate;
-                }
             }
         }
     }
@@ -101,30 +93,12 @@ public final class FunctionsOpenTelemetry {
     }
 
     /**
-     * Returns the OpenTelemetry SDK instance if available.
-     * For general tracing, prefer {@link #getOpenTelemetry()}.
-     * @return the OpenTelemetry SDK instance, or null if not available
-     */
-    public static OpenTelemetrySdk sdk() {
-        ensureInitialized();
-        if (sdk != null) {
-            return sdk;
-        }
-        // Use cached global instance instead of calling GlobalOpenTelemetry.get() again
-        if (globalOtel instanceof OpenTelemetrySdk) {
-            return (OpenTelemetrySdk) globalOtel;
-        }
-        throw new IllegalStateException("No OpenTelemetrySdk available. Use getOpenTelemetry() for general tracing.");
-    }
-
-    /**
      * Returns the OpenTelemetry instance for tracing operations.
      * @return the OpenTelemetry instance
      */
     public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
         ensureInitialized();
-        // Use cached global instance instead of calling GlobalOpenTelemetry.get() again
-        return (sdk != null) ? sdk : globalOtel;
+        return globalOtel;
     }
 
     /**

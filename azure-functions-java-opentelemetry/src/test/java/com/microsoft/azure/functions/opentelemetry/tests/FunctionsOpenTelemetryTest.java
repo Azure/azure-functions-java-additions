@@ -1,9 +1,9 @@
 package com.microsoft.azure.functions.opentelemetry.tests;
 
 import com.microsoft.azure.functions.opentelemetry.FunctionsOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -20,8 +20,8 @@ public class FunctionsOpenTelemetryTest {
 
     @Test
     void testSdkInitialization() {
-        OpenTelemetrySdk sdk = FunctionsOpenTelemetry.sdk();
-        Assertions.assertNotNull(sdk, "Expected a non-null OpenTelemetrySdk instance");
+        OpenTelemetry openTelemetry = FunctionsOpenTelemetry.getOpenTelemetry();
+        Assertions.assertNotNull(openTelemetry, "Expected a non-null OpenTelemetry instance");
     }
 
     @Test
