@@ -1,8 +1,6 @@
 package com.microsoft.azure.functions.opentelemetry.tests;
 
 import com.microsoft.azure.functions.opentelemetry.FunctionsOpenTelemetry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Assertions;
@@ -19,23 +17,32 @@ public class FunctionsOpenTelemetryTest {
     }
 
     @Test
-    void testSdkInitialization() {
-        OpenTelemetry openTelemetry = FunctionsOpenTelemetry.getOpenTelemetry();
-        Assertions.assertNotNull(openTelemetry, "Expected a non-null OpenTelemetry instance");
+    void testAgentDetectionThrowsException() {
+        // Since no agent is present during testing, we expect an IllegalStateException
+        Exception exception = Assertions.assertThrows(IllegalStateException.class, () -> {
+            FunctionsOpenTelemetry.getOpenTelemetry();
+        });
+        
+        Assertions.assertTrue(exception.getMessage().contains("No OpenTelemetry agent detected"));
     }
 
     @Test
-    void testStartSpanWithNullTraceContext() {
-        Span span = FunctionsOpenTelemetry.startSpan("testTracer", "testSpan", (com.microsoft.azure.functions.TraceContext) null, SpanKind.INTERNAL);
-        Assertions.assertNotNull(span, "Expected a non-null Span object");
-        span.end();
+    void testStartSpanThrowsExceptionWithoutAgent() {
+        // Since no agent is present during testing, we expect an IllegalStateException
+        Exception exception = Assertions.assertThrows(IllegalStateException.class, () -> {
+            FunctionsOpenTelemetry.startSpan("testTracer", "testSpan", (com.microsoft.azure.functions.TraceContext) null, SpanKind.INTERNAL);
+        });
+        
+        Assertions.assertTrue(exception.getMessage().contains("No OpenTelemetry agent detected"));
     }
 
     @Test
-    void testStartSpanWithDefaultSpanKind() {
-        // Passing null for SpanKind should default to INTERNAL
-        Span span = FunctionsOpenTelemetry.startSpan("defaultTracer", "defaultSpan", (com.microsoft.azure.functions.TraceContext) null, null);
-        Assertions.assertNotNull(span, "Expected a non-null Span object");
-        span.end();
+    void testStartSpanWithDefaultSpanKindThrowsExceptionWithoutAgent() {
+        // Since no agent is present during testing, we expect an IllegalStateException
+        Exception exception = Assertions.assertThrows(IllegalStateException.class, () -> {
+            FunctionsOpenTelemetry.startSpan("defaultTracer", "defaultSpan", (com.microsoft.azure.functions.TraceContext) null, null);
+        });
+        
+        Assertions.assertTrue(exception.getMessage().contains("No OpenTelemetry agent detected"));
     }
 }

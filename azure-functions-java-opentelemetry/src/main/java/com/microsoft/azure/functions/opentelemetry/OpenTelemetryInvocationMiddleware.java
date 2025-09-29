@@ -12,15 +12,9 @@ import io.opentelemetry.context.Scope;
 
 /**
  * OpenTelemetry middleware that creates spans for Azure Functions invocations.
+ * Assumes an OpenTelemetry agent is present and configured.
  */
 public class OpenTelemetryInvocationMiddleware implements Middleware {
-
-    /**
-     * Constructs the middleware and initializes OpenTelemetry.
-     */
-    public OpenTelemetryInvocationMiddleware() {
-        FunctionsOpenTelemetry.initialize();
-    }
 
     /**
      * Creates a span for the function invocation with tracing context.
