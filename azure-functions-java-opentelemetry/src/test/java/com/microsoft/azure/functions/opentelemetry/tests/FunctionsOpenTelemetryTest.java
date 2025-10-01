@@ -30,17 +30,17 @@ public class FunctionsOpenTelemetryTest {
     void testStartSpanThrowsExceptionWithoutAgent() {
         // Since no agent is present during testing, we expect an IllegalStateException
         Exception exception = Assertions.assertThrows(IllegalStateException.class, () -> {
-            FunctionsOpenTelemetry.startSpan("testTracer", "testSpan", (com.microsoft.azure.functions.TraceContext) null, SpanKind.INTERNAL);
+            FunctionsOpenTelemetry.startSpan("testSpan", "testFunction", "testInvocation", (com.microsoft.azure.functions.TraceContext) null, SpanKind.INTERNAL);
         });
         
         Assertions.assertTrue(exception.getMessage().contains("No OpenTelemetry agent detected"));
     }
 
     @Test
-    void testStartSpanWithDefaultSpanKindThrowsExceptionWithoutAgent() {
+    void testStartSpanWithInternalSpanKindThrowsExceptionWithoutAgent() {
         // Since no agent is present during testing, we expect an IllegalStateException
         Exception exception = Assertions.assertThrows(IllegalStateException.class, () -> {
-            FunctionsOpenTelemetry.startSpan("defaultTracer", "defaultSpan", (com.microsoft.azure.functions.TraceContext) null, null);
+            FunctionsOpenTelemetry.startSpan("internalSpan", "testFunction", "testInvocation", (com.microsoft.azure.functions.TraceContext) null, SpanKind.INTERNAL);
         });
         
         Assertions.assertTrue(exception.getMessage().contains("No OpenTelemetry agent detected"));

@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 public class OpenTelemetryInvocationMiddlewareTest {
 
         @Test
-    void testInvokeThrowsExceptionWithoutAgent() throws Exception {
+    void testInvokeGracefullyHandlesNoAgent() throws Exception {
         // Mock context
         MiddlewareContext context = Mockito.mock(MiddlewareContext.class);
         Mockito.when(context.getFunctionName()).thenReturn("myFunction");
@@ -28,40 +28,37 @@ public class OpenTelemetryInvocationMiddlewareTest {
 
         OpenTelemetryInvocationMiddleware middleware = new OpenTelemetryInvocationMiddleware();
         
-        // Since no agent is present during testing, we expect an IllegalStateException
-        IllegalStateException exception = Assertions.assertThrows(IllegalStateException.class, () -> {
+        // Since no agent is present during testing, middleware should gracefully continue without tracing
+        // This should not throw an exception, allowing the function to execute normally
+        Assertions.assertDoesNotThrow(() -> {
             middleware.invoke(context, chain);
         });
         
-        Assertions.assertTrue(exception.getMessage().contains("No OpenTelemetry agent detected"));
-        
-        // Verify chain.doNext was never called because exception occurred first
-        Mockito.verify(chain, Mockito.never()).doNext(context);
+        // Verify chain.doNext was called even though span creation failed
+        Mockito.verify(chain, Mockito.times(1)).doNext(context);
     }
 
     @Test
-    void testInvokeThrowsExceptionBeforeChainExecution() throws Exception {
+    void testInvokeContinuesChainExecutionWithoutAgent() throws Exception {
         // Mock context
         MiddlewareContext context = Mockito.mock(MiddlewareContext.class);
-        Mockito.when(context.getFunctionName()).thenReturn("failingFunction");
+        Mockito.when(context.getFunctionName()).thenReturn("testFunction");
         Mockito.when(context.getInvocationId()).thenReturn("9876");
         Mockito.when(context.getLogger()).thenReturn(Logger.getLogger("testLogger"));
         Mockito.when(context.getTraceContext()).thenReturn(dummyTraceContext());
 
-        // Mock chain (won't be reached due to agent exception)
+        // Mock chain
         MiddlewareChain chain = Mockito.mock(MiddlewareChain.class);
 
         OpenTelemetryInvocationMiddleware middleware = new OpenTelemetryInvocationMiddleware();
 
-        // The middleware will fail before reaching the chain due to no agent
-        IllegalStateException thrown = Assertions.assertThrows(
-                IllegalStateException.class,
-                () -> middleware.invoke(context, chain)
-        );
-        Assertions.assertTrue(thrown.getMessage().contains("No OpenTelemetry agent detected"));
+        // The middleware should gracefully handle the lack of agent and continue execution
+        Assertions.assertDoesNotThrow(() -> {
+            middleware.invoke(context, chain);
+        });
         
-        // Verify chain.doNext was never called because exception occurred first
-        Mockito.verify(chain, Mockito.never()).doNext(context);
+        // Verify chain.doNext was called even without an agent
+        Mockito.verify(chain, Mockito.times(1)).doNext(context);
     }
 
     private TraceContext dummyTraceContext() {
