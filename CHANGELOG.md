@@ -5,6 +5,7 @@
 
 ### Updates
 * Updated the BrokerProtocol type for Kafka Extension.
+* Add check for all connection env variables to configure managed identity
 
 ### Breaking changes
 * to be update
