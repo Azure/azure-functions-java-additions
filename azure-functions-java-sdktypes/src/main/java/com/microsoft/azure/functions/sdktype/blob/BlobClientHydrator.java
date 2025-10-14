@@ -25,7 +25,7 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
         String envVar = metaData.getConnectionEnvVar();
         String configValue = System.getenv(envVar);
 
-        if (configValue == null || configValue.isEmpty()) {
+        if (!environmentVariablesArePresent(envVar)) {
             throw new SdkHydrationException("No environment variable set for: " + envVar);
         }
 
@@ -35,7 +35,7 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
         Object blobBuilder = blobBuilderClass.getDeclaredConstructor().newInstance();
 
         // Step 2: If configValue is a connection string, do the existing approach
-        if (isConnectionString(configValue)) {
+        if (configValue != null && isConnectionString(configValue)) {
             LOGGER.info("Detected connection string usage from: " + envVar);
 
             Method conn = blobBuilderClass.getMethod("connectionString", String.class);
@@ -85,6 +85,24 @@ public class BlobClientHydrator implements SdkTypeHydrator<BlobClientMetaData> {
 
         LOGGER.info("Successfully created BlobClient instance via reflection.");
         return blobClient;
+    }
+
+    private boolean environmentVariablesArePresent(String envVar){
+        final String configValue = System.getenv(envVar);
+        final String accountName = System.getenv(envVar + "__accountName");
+        final String blobServiceUri = System.getenv(envVar + "__blobServiceUri");
+        final String serviceUri = System.getenv(envVar + "__serviceUri");
+
+        if(configValue != null && !configValue.isEmpty()){
+            return true;
+        }
+        if( (accountName != null && !accountName.isEmpty())  ||
+            (blobServiceUri != null && !blobServiceUri.isEmpty()) ||
+            (serviceUri != null && !serviceUri.isEmpty())
+        ){
+            return true;
+        }
+        return false;
     }
 
     /**
