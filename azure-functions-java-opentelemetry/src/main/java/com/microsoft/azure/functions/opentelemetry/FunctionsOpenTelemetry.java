@@ -32,19 +32,30 @@ public final class FunctionsOpenTelemetry {
      * Assumes an OpenTelemetry agent has configured the global instance.
      * 
      * @return the global OpenTelemetry instance
-     * @throws IllegalStateException if no OpenTelemetry agent is detected
+     * @throws IllegalStateException if no OpenTelemetry agent is detected or if an error occurs while getting the SDK
      */
     public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
-        io.opentelemetry.api.OpenTelemetry otel = GlobalOpenTelemetry.get();
-        
-        if (isNoOp(otel)) {
+        try {
+            io.opentelemetry.api.OpenTelemetry otel = GlobalOpenTelemetry.get();
+            
+            if (isNoOp(otel)) {
+                throw new IllegalStateException(
+                    "No OpenTelemetry agent detected. This library requires an OpenTelemetry agent to be present. " +
+                    "Please ensure your application is running with an OpenTelemetry Java agent."
+                );
+            }
+            
+            return otel;
+        } catch (IllegalStateException e) {
+            // Re-throw our own IllegalStateException
+            throw e;
+        } catch (Exception e) {
             throw new IllegalStateException(
-                "No OpenTelemetry agent detected. This library requires an OpenTelemetry agent to be present. " +
-                "Please ensure your application is running with an OpenTelemetry Java agent."
+                "Failed to get OpenTelemetry instance: " + e.getMessage() + 
+                ". Please ensure your application is running with a properly configured OpenTelemetry Java agent.",
+                e
             );
         }
-        
-        return otel;
     }
 
     /**
