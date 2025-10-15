@@ -58,13 +58,13 @@ public class HttpTriggerCaller {
 
             return request.createResponseBuilder(HttpStatus.OK)
                     .header("Content-Type", "text/plain")
-                    .body("A → B (" + url + ")\nB responded: " + resp.statusCode() + "\n" + resp.body() + "\n[TELEMETRY: DISABLED]")
+                    .body("A → B (" + url + ")\nB responded: " + resp.statusCode())
                     .build();
 
         } catch (Exception e) {
             log.severe("Call to B failed: " + e);
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("A failed to call B: " + e.getMessage() + " [TELEMETRY: DISABLED]")
+                    .body("A failed to call B: " + e.getMessage())
                     .build();
         }
     }
