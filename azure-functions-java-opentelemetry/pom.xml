@@ -46,12 +46,16 @@
             <version>1.1.0</version>
             <scope>provided</scope>
         </dependency>
-        <!-- OpenTelemetry dependencies - these will be shaded into our JAR -->
+        <!-- OpenTelemetry dependencies -->
+        <!-- API is provided by the function app - must not be shaded to
+        maintain compatibility with the agent -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-api</artifactId>
             <version>1.49.0</version>
+            <scope>provided</scope>
         </dependency>
+        <!-- SDK common is needed for resource detection - will be shaded to avoid conflicts -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-common</artifactId>
@@ -120,9 +124,15 @@
                         </goals>
                         <configuration>
                             <relocations>
+                                <!-- Only shade SDK components - keep API unshaded for agent compatibility -->
                                 <relocation>
-                                    <pattern>io.opentelemetry</pattern>
-                                    <shadedPattern>com.microsoft.azure.functions.opentelemetry.shaded.otel</shadedPattern>
+                                    <pattern>io.opentelemetry.sdk</pattern>
+                                    <shadedPattern>com.microsoft.azure.functions.opentelemetry.shaded.otel.sdk</shadedPattern>
+                                </relocation>
+                                <!-- Also shade any other transitive dependencies that might conflict -->
+                                <relocation>
+                                    <pattern>io.opentelemetry.semconv</pattern>
+                                    <shadedPattern>com.microsoft.azure.functions.opentelemetry.shaded.otel.semconv</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>
