@@ -1,5 +1,6 @@
 package com.microsoft.azure.functions.opentelemetry;
 
+import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.TraceContext;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -19,7 +20,7 @@ import java.util.Map;
 public final class FunctionsOpenTelemetry {
 
     /** Default tracer name for Azure Functions spans. */
-    private static final String DEFAULT_TRACER_NAME = "azure.functions.worker";
+    private static final String TRACER_NAME = "azure.functions.worker";
 
     /** TextMapGetter for Azure Functions TraceContext. */
     private static final TextMapGetter<TraceContext> TRACE_CONTEXT_GETTER = TraceContextTextMapGetter.INSTANCE;
@@ -74,15 +75,6 @@ public final class FunctionsOpenTelemetry {
     }
 
     /**
-     * Validates that a string parameter is non-null and non-empty.
-     */
-    private static void validateNonEmpty(String value, String paramName) {
-        if (value == null || value.isEmpty()) {
-            throw new IllegalArgumentException(paramName + " must be non-null and non-empty");
-        }
-    }
-
-    /**
      * Creates and starts a new span with Azure Functions context.
      * 
      * <p>This method automatically sets Azure Functions attributes on the span:
@@ -92,15 +84,21 @@ public final class FunctionsOpenTelemetry {
      * </ul>
      * 
      * @param spanName the name of the span
-     * @param functionName the Azure Functions function name
-     * @param invocationId the unique invocation ID
-     * @param traceContext the Azure Functions trace context (optional)
+     * @param executionContext the Azure Functions execution context containing function name, invocation ID, and trace context
      * @param kind the span kind
      * @return the started span with Azure attributes already set
      */
-    public static Span startSpan(String spanName, String functionName, String invocationId, 
-                                TraceContext traceContext, SpanKind kind) {
-        validateNonEmpty(spanName, "spanName");
+    public static Span startSpan(String spanName, ExecutionContext executionContext, SpanKind kind) {
+        if (spanName == null || spanName.isEmpty()) {
+            throw new IllegalArgumentException("spanName must be non-null and non-empty");
+        }
+        
+        if (executionContext == null) {
+            throw new IllegalArgumentException("executionContext must not be null");
+        }
+        
+        // Extract trace context from execution context
+        TraceContext traceContext = executionContext.getTraceContext();
         
         // Determine parent context
         Context parent = Context.current();
@@ -111,14 +109,14 @@ public final class FunctionsOpenTelemetry {
         }
         
         // Create the span
-        Span span = getOpenTelemetry().getTracer(DEFAULT_TRACER_NAME)
+        Span span = getOpenTelemetry().getTracer(TRACER_NAME)
                 .spanBuilder(spanName)
                 .setParent(parent)
                 .setSpanKind(kind == null ? SpanKind.INTERNAL : kind)
                 .startSpan();
         
-        // Automatically set Azure attributes using the same API users will use for logs
-        getCurrentAzureContext(functionName, invocationId).forEach(span::setAttribute);
+        // Automatically set Azure attributes using the execution context
+        getAzureContext(executionContext).forEach(span::setAttribute);
         
         return span;
     }
@@ -131,42 +129,73 @@ public final class FunctionsOpenTelemetry {
      * 
      * <ul>
      *   <li><strong>Azure resource attributes:</strong> service.name, cloud.provider, cloud.region, etc.</li>
-     *   <li><strong>Function-specific attributes:</strong> faas.name, faas.invocation_id (if provided)</li>
+     *   <li><strong>Function-specific attributes:</strong> faas.name, faas.invocation_id, faas.instance</li>
+     *   <li><strong>Runtime attributes:</strong> process.pid, #AzFuncLiveLogsSessionId (from trace context)</li>
      * </ul>
      * 
      * <p>Usage examples:
      * <pre>{@code
      * // With SLF4J structured logging
-     * Map<String, String> context = FunctionsOpenTelemetry.getCurrentAzureContext("myFunction", "inv-123");
+     * Map<String, String> context = FunctionsOpenTelemetry.getAzureContext(executionContext);
      * logger.info("Processing request", context);
      * 
      * // With MDC
-     * Map<String, String> context = FunctionsOpenTelemetry.getCurrentAzureContext("myFunction", "inv-123");
+     * Map<String, String> context = FunctionsOpenTelemetry.getAzureContext(executionContext);
      * context.forEach(MDC::put);
      * logger.info("Processing request");
      * MDC.clear();
      * 
      * // With custom formatting
-     * Map<String, String> context = FunctionsOpenTelemetry.getCurrentAzureContext("myFunction", "inv-123");
+     * Map<String, String> context = FunctionsOpenTelemetry.getAzureContext(executionContext);
      * logger.info("Processing request - {}", context);
      * }</pre>
      * 
-     * @param functionName the name of the Azure Function (optional)
-     * @param invocationId the unique invocation ID for this function execution (optional)
+     * @param executionContext the Azure Functions execution context containing function name and invocation ID
      * @return a map of context attributes that can be used for log correlation
      */
-    public static Map<String, String> getCurrentAzureContext(String functionName, String invocationId) {
+    public static Map<String, String> getAzureContext(ExecutionContext executionContext) {
+        if (executionContext == null) {
+            throw new IllegalArgumentException("executionContext must not be null");
+        }
+        
         Map<String, String> attributes = new HashMap<>();
         
         // Add cached Azure resource attributes
         addAzureResourceAttributes(attributes);
         
-        // Add function-specific attributes if provided
+        // Add function-specific attributes from execution context
+        String functionName = executionContext.getFunctionName();
         if (functionName != null && !functionName.isEmpty()) {
             attributes.put("faas.name", functionName);
         }
+        
+        String invocationId = executionContext.getInvocationId();
         if (invocationId != null && !invocationId.isEmpty()) {
             attributes.put("faas.invocation_id", invocationId);
+        }
+        
+        // Add trace context attributes (HostInstanceId, ProcessId, etc.)
+        TraceContext traceContext = executionContext.getTraceContext();
+        if (traceContext != null && traceContext.getAttributes() != null) {
+            Map<String, String> traceAttributes = traceContext.getAttributes();
+            
+            // Add HostInstanceId if available
+            String hostInstanceId = traceAttributes.get("HostInstanceId");
+            if (hostInstanceId != null && !hostInstanceId.isEmpty()) {
+                attributes.put("faas.instance", hostInstanceId);
+            }
+            
+            // Add ProcessId if available
+            String processId = traceAttributes.get("ProcessId");
+            if (processId != null && !processId.isEmpty()) {
+                attributes.put("process.pid", processId);
+            }
+            
+            // Add AzFuncLiveLogsSessionId if available
+            String liveLogsSessionId = traceAttributes.get("#AzFuncLiveLogsSessionId");
+            if (liveLogsSessionId != null && !liveLogsSessionId.isEmpty()) {
+                attributes.put("#AzFuncLiveLogsSessionId", liveLogsSessionId);
+            }
         }
         
         return attributes;

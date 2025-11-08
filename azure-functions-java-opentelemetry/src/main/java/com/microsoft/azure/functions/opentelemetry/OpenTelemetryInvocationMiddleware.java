@@ -1,5 +1,7 @@
 package com.microsoft.azure.functions.opentelemetry;
 
+import java.util.Map;
+
 import com.microsoft.azure.functions.internal.spi.middleware.Middleware;
 import com.microsoft.azure.functions.internal.spi.middleware.MiddlewareChain;
 import com.microsoft.azure.functions.internal.spi.middleware.MiddlewareContext;
@@ -16,7 +18,7 @@ import io.opentelemetry.context.Scope;
  * specific attributes. It assumes an OpenTelemetry agent is present and configured.
  * 
  * <p><strong>Note:</strong> For log correlation, users should use the utility methods in
- * {@link FunctionsOpenTelemetry#getCurrentAzureContext(String, String)} to get context attributes
+ * {@link FunctionsOpenTelemetry#getAzureContext(com.microsoft.azure.functions.ExecutionContext)} to get context attributes
  * and add them to their logs in the way that best fits their logging framework.
  */
 public class OpenTelemetryInvocationMiddleware implements Middleware {
@@ -45,9 +47,7 @@ public class OpenTelemetryInvocationMiddleware implements Middleware {
             // Create and start the function invocation span with Azure attributes automatically set
             invocationSpan = FunctionsOpenTelemetry.startSpan(
                 spanName, 
-                context.getFunctionName(), 
-                context.getInvocationId(), 
-                context.getTraceContext(),
+                context,  // MiddlewareContext extends ExecutionContext
                 SpanKind.INTERNAL
             );
             
