@@ -8,7 +8,7 @@
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "<only needed if using AppInsights Agent>",
     "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.nr-data.net",
     "OTEL_SERVICE_NAME": "my-test-java-function",
-    "OTEL_EXPORTER_OTLP_HEADERS": "api-key=e38ca46a1178d27be38b82cc1b981458FFFFNRAL",
+    "OTEL_EXPORTER_OTLP_HEADERS": "api-key=**",
     "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
     "OTEL_LOGS_EXPORTER": "otlp",
     "OTEL_METRICS_EXPORTER": "otlp",
