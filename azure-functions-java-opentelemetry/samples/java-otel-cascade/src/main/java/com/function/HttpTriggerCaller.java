@@ -28,11 +28,7 @@ public class HttpTriggerCaller {
             final ExecutionContext context) {
         var log = context.getLogger();
         
-        return runImpl(request, context, log);
-    }
-    
-    private HttpResponseMessage runImpl(HttpRequestMessage<Optional<String>> request, ExecutionContext context, java.util.logging.Logger log) {
-        Map<String, String> azureContext = FunctionsOpenTelemetry.getCurrentAzureContext(context.getFunctionName(), context.getInvocationId());
+        Map<String, String> azureContext = FunctionsOpenTelemetry.getAzureContext(context);
         log.info("Java HTTP trigger processed a request: A.");
         String name = request.getQueryParameters().getOrDefault("name", "world");
 
@@ -48,7 +44,7 @@ public class HttpTriggerCaller {
                     .build();
 
             var httpReq = HttpRequest.newBuilder(URI.create(url))
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(Duration.ofSeconds(60))
                     .GET()
                     .build();
 
