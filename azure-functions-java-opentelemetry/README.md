@@ -5,7 +5,8 @@
 This library provides [OpenTelemetry](https://opentelemetry.io/) integration for Java-based Azure Functions when running with an OpenTelemetry agent. It automatically:
 
 1. Creates spans for each function invocation with proper trace context propagation.
-2. Provides convenient helper methods for creating custom spans.
+2. Provides convenient helper methods for creating custom spans with Azure Functions context.
+3. Extracts Azure Functions context attributes for log correlation and observability.
 
 **Note:** This library requires an OpenTelemetry Java agent to be present. It does not initialize or configure the OpenTelemetry SDK itself.
 
@@ -18,20 +19,23 @@ This library provides [OpenTelemetry](https://opentelemetry.io/) integration for
 * [Prerequisites](#prerequisites)
 * [How It Works](#how-it-works)
 * [Usage in Azure Functions](#usage-in-azure-functions)
+* [Azure Functions Context](#azure-functions-context)
 * [Local Development](#local-development)
 * [Testing](#testing)
+* [Migration from Previous Versions](#migration-from-previous-versions)
 
 ---
 
 ## Key Classes
 
 1. **`FunctionsOpenTelemetry`**
-   * Provides helper methods like `startSpan(...)` which work with the global OpenTelemetry instance configured by the agent.
-   * Accepts either an OpenTelemetry `Context` or an Azure Functions `TraceContext`.
+   * `startSpan(String spanName, ExecutionContext executionContext, SpanKind kind)` - Creates spans with Azure Functions context
+   * `getAzureContext(ExecutionContext executionContext)` - Extracts Azure Functions context attributes for logging
+   * `getOpenTelemetry()` - Returns the global OpenTelemetry instance configured by the agent
 
 2. **`OpenTelemetryInvocationMiddleware`**
    * Implements Azure Functions middleware (`com.microsoft.azure.functions.internal.spi.middleware.Middleware`).
-   * Starts a span for each function invocation and propagates trace context from the Azure Functions host.
+   * Automatically starts a span for each function invocation and propagates trace context.
 
 ---
 
@@ -43,11 +47,9 @@ Add the library to your `pom.xml`:
 <dependency>
   <groupId>com.microsoft.azure.functions</groupId>
   <artifactId>azure-functions-java-opentelemetry</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
 </dependency>
 ```
-
-(*Adjust the version as needed.*)
 
 ---
 
@@ -83,52 +85,166 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://your-collector-endpoint
 1. **Agent Detection**
    The library checks if an OpenTelemetry agent has configured the global OpenTelemetry instance. If no agent is detected, it throws an `IllegalStateException`.
 
-2. **Span Creation**
-   * `OpenTelemetryInvocationMiddleware` automatically creates a span for each function invocation with `faas.invocation_id` and `faas.name` attributes.
-   * `FunctionsOpenTelemetry.startSpan(...)` provides convenient methods for creating custom spans.
+2. **Automatic Middleware**
+   * `OpenTelemetryInvocationMiddleware` automatically creates a span for each function invocation.
+   * Extracts trace context from the Azure Functions host and propagates it.
+   * Sets Azure Functions attributes like `faas.name`, `faas.invocation_id`, and `faas.instance`.
+
+3. **Custom Span Creation**
+   * `startSpan(...)` creates custom spans with automatic Azure Functions context attributes.
+   * `getAzureContext(...)` extracts context attributes for structured logging and correlation.
 
 ---
 
 ## Usage in Azure Functions
 
-1. **Automatic Middleware**
-   The middleware is automatically registered and creates spans for all function invocations.
+### 1. Automatic Middleware
+The middleware is automatically registered and creates spans for all function invocations. No code changes required.
 
-2. **Custom Spans**
-   ```java
-   import com.microsoft.azure.functions.opentelemetry.FunctionsOpenTelemetry;
-   import io.opentelemetry.api.trace.Span;
-   import io.opentelemetry.api.trace.SpanKind;
-   import io.opentelemetry.context.Scope;
+### 2. Custom Spans
+```java
+import com.microsoft.azure.functions.opentelemetry.FunctionsOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Scope;
 
-   @FunctionName("MyFunction")
-   public HttpResponseMessage run(
-           @HttpTrigger(name = "req", methods = {HttpMethod.GET}) HttpRequestMessage<Optional<String>> request,
-           final ExecutionContext context) {
-       
-       // Create a custom span
-       Span customSpan = FunctionsOpenTelemetry.startSpan(
-           "business-logic",
-           context.getTraceContext(),
-           SpanKind.INTERNAL
-       );
-       
-       try (Scope scope = customSpan.makeCurrent()) {
-           // Your business logic here
-           customSpan.setAttribute("user.id", "12345");
-           return request.createResponseBuilder(HttpStatus.OK).body("Hello World").build();
-       } finally {
-           customSpan.end();
-       }
-   }
-   ```
+@FunctionName("MyFunction")
+public HttpResponseMessage run(
+        @HttpTrigger(name = "req", methods = {HttpMethod.GET}) 
+        HttpRequestMessage<Optional<String>> request,
+        final ExecutionContext context) {
+    
+    // Create a custom span with Azure Functions context
+    Span customSpan = FunctionsOpenTelemetry.startSpan(
+        "business-logic",
+        context,  // ExecutionContext provides trace context and function metadata
+        SpanKind.INTERNAL
+    );
+    
+    try (Scope scope = customSpan.makeCurrent()) {
+        // Your business logic here
+        customSpan.setAttribute("user.id", "12345");
+        
+        // Azure Functions attributes are automatically added:
+        // - faas.name (function name)
+        // - faas.invocation_id 
+        // - faas.instance (host instance ID)
+        // - service.name (from Azure resource detection)
+        
+        return request.createResponseBuilder(HttpStatus.OK)
+            .body("Hello World")
+            .build();
+    } finally {
+        customSpan.end();
+    }
+}
+```
+
+### 3. Azure Functions Context for Logging
+
+Extract Azure Functions context attributes for structured logging and correlation:
+
+```java
+import com.microsoft.azure.functions.opentelemetry.FunctionsOpenTelemetry;
+
+@FunctionName("MyFunction")
+public HttpResponseMessage run(
+        @HttpTrigger(name = "req", methods = {HttpMethod.GET}) 
+        HttpRequestMessage<Optional<String>> request,
+        final ExecutionContext context) {
+    
+    // Get Azure Functions context attributes
+    Map<String, String> azureContext = FunctionsOpenTelemetry.getAzureContext(context);
+    
+    // Use with structured logging frameworks
+    context.getLogger().info("Processing request with context: " + azureContext);
+    
+    // Available attributes include:
+    // - faas.name: Function name
+    // - faas.invocation_id: Unique invocation ID
+    // - faas.instance: Host instance ID (from trace context)
+    // - process.pid: Process ID (from trace context)
+    // - #AzFuncLiveLogsSessionId: Live logs session ID (from trace context)
+    // - service.name: Azure Functions app name
+    // - cloud.provider: "azure"
+    // - cloud.region: Azure region
+    
+    return request.createResponseBuilder(HttpStatus.OK)
+        .body("Hello World")
+        .build();
+}
+```
+
+---
+
+## Azure Functions Context
+
+The library automatically extracts and provides Azure Functions context attributes:
+
+### Resource Attributes (cached, shared across invocations)
+- `service.name`: Azure Functions app name
+- `cloud.provider`: "azure"  
+- `cloud.region`: Azure region
+- `cloud.resource_id`: Azure resource ID
+
+### Function-Specific Attributes (per invocation)
+- `faas.name`: Function name
+- `faas.invocation_id`: Unique invocation ID
+
+### Trace Context Attributes (from Azure Functions host)
+- `faas.instance`: Host instance ID
+- `process.pid`: Process ID  
+- `#AzFuncLiveLogsSessionId`: Live logs session ID for debugging
+
+These attributes are automatically added to custom spans created with `startSpan()` and are available via `getAzureContext()` for logging correlation.
 
 ---
 
 ## Local Development
 
-* Make sure to run with the OpenTelemetry agent even during local development.
-* Configure the agent with appropriate exporters for local testing (e.g., console exporter).
+### Configure OpenTelemetry Agent
+
+Make sure to run with the OpenTelemetry agent even during local development:
+
+```bash
+# Download the OpenTelemetry Java agent
+wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
+
+# Configure local.settings.json
+{
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "JAVA_ENABLE_OPENTELEMETRY": "true",
+    "JAVA_OPTS": "-javaagent:opentelemetry-javaagent.jar",
+    "OTEL_SERVICE_NAME": "my-function-app-local",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+    "OTEL_TRACES_EXPORTER": "otlp"
+  }
+}
+
+# Run Azure Functions locally
+func start
+```
+
+### Local Testing with Console Exporter
+
+For local development, you can use the console exporter to see traces in the console:
+
+```bash
+# Set environment variables for console output
+export OTEL_TRACES_EXPORTER=console
+export OTEL_METRICS_EXPORTER=console
+export OTEL_LOGS_EXPORTER=console
+
+# Or in local.settings.json
+{
+  "Values": {
+    "OTEL_TRACES_EXPORTER": "console",
+    "OTEL_METRICS_EXPORTER": "console", 
+    "OTEL_LOGS_EXPORTER": "console"
+  }
+}
+```
 
 ---
 
