@@ -13,7 +13,7 @@
     "OTEL_LOGS_EXPORTER": "otlp",
     "OTEL_METRICS_EXPORTER": "otlp",
     "OTEL_TRACES_EXPORTER": "otlp",
-    "JAVA_OPTS": "-javaagent:\"..\\..\\..\\opentelemetry-javaagent.jar\"",
+    "JAVA_OPTS": "-javaagent:opentelemetry-javaagent.jar",
     "ServiceBusConnectionString": "**"
     }
 }

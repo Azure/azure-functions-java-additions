@@ -15,6 +15,7 @@
         <azure.functions.maven.plugin.version>1.39.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
         <functionAppName>java-otel-cascade-1756925571105</functionAppName>
+        <opentelemetry.javaagent.version>2.11.0</opentelemetry.javaagent.version>
     </properties>
 
     <dependencies>
@@ -112,6 +113,33 @@
                         </fileset>
                     </filesets>
                 </configuration>
+            </plugin>
+            <!-- Download OpenTelemetry Java Agent -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-otel-agent</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>io.opentelemetry.javaagent</groupId>
+                                    <artifactId>opentelemetry-javaagent</artifactId>
+                                    <version>${opentelemetry.javaagent.version}</version>
+                                    <type>jar</type>
+                                    <outputDirectory>${project.build.directory}/azure-functions/${functionAppName}</outputDirectory>
+                                    <destFileName>opentelemetry-javaagent.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
