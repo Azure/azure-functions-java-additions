@@ -42,8 +42,10 @@ public class OpenTelemetryInvocationMiddleware implements Middleware {
         Span invocationSpan = null;
         
         try {
-            String spanName = "Invoke";
-            
+            // The recommended format is {verb} {object} for clarity and
+            // consistency. In our case 'function FunctionName'
+            String spanName = "function " + context.getFunctionName();
+
             // Create and start the function invocation span with Azure attributes automatically set
             invocationSpan = FunctionsOpenTelemetry.startSpan(
                 spanName, 
