@@ -1,159 +1,251 @@
 package com.microsoft.azure.functions.opentelemetry;
 
+import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.TraceContext;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder;
+import io.opentelemetry.sdk.resources.Resource;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.lang.reflect.Method;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-
+/**
+ * OpenTelemetry integration for Azure Functions.
+ * 
+ * <p>Provides span creation methods and context attribute utilities that work with OpenTelemetry agents.
+ * This library assumes an OpenTelemetry agent is present and configured.
+ */
 public final class FunctionsOpenTelemetry {
 
+    /** Default tracer name for Azure Functions spans. */
+    private static final String TRACER_NAME = "azure.functions.worker";
 
-    private static Logger LOGGER = Logger.getLogger(FunctionsOpenTelemetry.class.getSimpleName());
-    private static volatile OpenTelemetrySdk sdk;
-
-    public static void setLogger(Logger logger) {
-        LOGGER = logger;
-    }
-
-    /**
-     * Ensures that the OpenTelemetry SDK is created.
-     */
-    public static void initialize() {
-        if (sdk == null) {
-            synchronized (FunctionsOpenTelemetry.class) {
-                if (sdk == null) {
-                    sdk = buildSdk();
-                }
-            }
-        }
-    }
-
-    public static OpenTelemetrySdk sdk() {
-        return sdk;
-    }
-
-    /**
-     * Creates an SDK, optionally enriching it with Azure Monitor if the
-     * environment variable<br>
-     * {@code APPLICATIONINSIGHTS_CONNECTION_STRING}
-     * is present and not null.
-     *
-     * <p>Reflection is used <em>only</em> for the optional
-     * {@code AzureMonitorAutoConfigure} class so that users are free to exclude
-     * it (or pull it in transitively) without breaking compilation.</p>
-     */
-    private static OpenTelemetrySdk buildSdk() {
-        LOGGER.info("Initializing OpenTelemetry SDK ...");
-        OpenTelemetrySdk sdk;
-
-        try {
-            final AutoConfiguredOpenTelemetrySdkBuilder builder =
-                    AutoConfiguredOpenTelemetrySdk.builder();
-
-            builder.addResourceCustomizer(
-                    (existing, unused) -> existing.merge(FunctionsResourceDetector.getResource()));
-
-            if (isAppInsightsEnabled()) {
-                final String connStr = System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING");
-                applyAzureMonitor(builder, connStr);
-            }
-
-            sdk = builder.build().getOpenTelemetrySdk();
-            GlobalOpenTelemetry.set(sdk);
-
-            LOGGER.info("OpenTelemetry SDK initialised successfully.");
-
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE,
-                    "Failed to initialise OpenTelemetry SDK – falling back to no-op", ex);
-
-            sdk = OpenTelemetrySdk.builder().build();
-            GlobalOpenTelemetry.set(sdk);
-        }
-
-        // ---- Add shutdown hook (needs a final reference) --------------------------
-        final OpenTelemetrySdk finalSdk = sdk;
-        Runtime.getRuntime().addShutdownHook(
-                new Thread(() -> finalSdk.getSdkTracerProvider().shutdown()));
-
-        return sdk;
-    }
-
-    private static boolean isAppInsightsEnabled() {
-        return Boolean.parseBoolean(
-                System.getenv("JAVA_APPLICATIONINSIGHTS_ENABLE_TELEMETRY"));
-    }
-
-    private static void applyAzureMonitor(AutoConfiguredOpenTelemetrySdkBuilder builder, String connStr) {
-
-        try {
-            ClassLoader cl = FunctionsOpenTelemetry.class.getClassLoader();
-
-            // Resolve the types we need with the same CL
-            Class<?> autoCfgClass = Class.forName(
-                    "com.azure.monitor.opentelemetry.autoconfigure.AzureMonitorAutoConfigure", false, cl);
-
-            Class<?> customizerIfc = Class.forName(
-                    "io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer", false, cl);
-
-            // Directly look up the exact overload we expect
-            Method customize =
-                    autoCfgClass.getMethod("customize", customizerIfc, String.class);
-
-            customize.invoke(null, builder, connStr);
-            LOGGER.info("AzureMonitorAutoConfigure applied via reflection");
-
-        } catch (ClassNotFoundException e) {
-            LOGGER.fine("azure-monitor-opentelemetry-autoconfigure not present – skipping");
-        } catch (NoSuchMethodException e) {
-            LOGGER.warning("AzureMonitorAutoConfigure.customize(...) not found – "
-                    + "library version may have changed");
-        } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Failed to apply AzureMonitorAutoConfigure", t);
-        }
-    }
-
+    /** TextMapGetter for Azure Functions TraceContext. */
     private static final TextMapGetter<TraceContext> TRACE_CONTEXT_GETTER = TraceContextTextMapGetter.INSTANCE;
+    
+    /** Cached Azure resource attributes (loaded once, shared across all invocations) */
+    private static volatile Map<String, String> cachedAzureResourceAttributes = null;
 
-    public static Span startSpan(
-            String tracerName,
-            String spanName,
-            Context parent,
-            SpanKind kind) {
+    /**
+     * Returns the OpenTelemetry instance for tracing operations.
+     * Assumes an OpenTelemetry agent has configured the global instance.
+     * 
+     * @return the global OpenTelemetry instance
+     * @throws IllegalStateException if no OpenTelemetry agent is detected or if an error occurs while getting the SDK
+     */
+    public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
+        try {
+            io.opentelemetry.api.OpenTelemetry otel = GlobalOpenTelemetry.get();
+            
+            if (isNoOp(otel)) {
+                throw new IllegalStateException(
+                    "No OpenTelemetry agent detected. This library requires an OpenTelemetry agent to be present. " +
+                    "Please ensure your application is running with an OpenTelemetry Java agent."
+                );
+            }
+            
+            return otel;
+        } catch (IllegalStateException e) {
+            // Re-throw our own IllegalStateException
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                "Failed to get OpenTelemetry instance: " + e.getMessage() + 
+                ". Please ensure your application is running with a properly configured OpenTelemetry Java agent.",
+                e
+            );
+        }
+    }
 
+    /**
+     * Checks if the given OpenTelemetry instance is a no-op implementation.
+     */
+    private static boolean isNoOp(io.opentelemetry.api.OpenTelemetry otel) {
+        if (otel == null) {
+            return true;
+        }
+        // Check class name to detect no-op implementations
+        String className = otel.getClass().getName();
+        return className.contains("Noop") || 
+               className.contains("NoOp") || 
+               className.contains("DefaultOpenTelemetry") ||
+               className.contains("ObfuscatedOpenTelemetry"); // Default GlobalOpenTelemetry wrapper
+    }
+
+    /**
+     * Creates and starts a new span with Azure Functions context.
+     * 
+     * <p>This method automatically sets Azure Functions attributes on the span:
+     * <ul>
+     *   <li>Azure resource attributes (service.name, cloud.provider, etc.)</li>
+     *   <li>Function-specific attributes (faas.name, faas.invocation_id)</li>
+     * </ul>
+     * 
+     * @param spanName the name of the span
+     * @param executionContext the Azure Functions execution context containing function name, invocation ID, and trace context
+     * @param kind the span kind
+     * @return the started span with Azure attributes already set
+     */
+    public static Span startSpan(String spanName, ExecutionContext executionContext, SpanKind kind) {
         if (spanName == null || spanName.isEmpty()) {
             throw new IllegalArgumentException("spanName must be non-null and non-empty");
         }
-        if (tracerName == null || tracerName.isEmpty()) {
-            throw new IllegalArgumentException("tracerName must be non-null and non-empty");
+        
+        if (executionContext == null) {
+            throw new IllegalArgumentException("executionContext must not be null");
         }
-
-        return sdk().getTracer(tracerName)
+        
+        // Extract trace context from execution context
+        TraceContext traceContext = executionContext.getTraceContext();
+        
+        // Determine parent context
+        Context parent = Context.current();
+        if (traceContext != null) {
+            parent = getOpenTelemetry().getPropagators()
+                    .getTextMapPropagator()
+                    .extract(Context.current(), traceContext, TRACE_CONTEXT_GETTER);
+        }
+        
+        // Create the span
+        Span span = getOpenTelemetry().getTracer(TRACER_NAME)
                 .spanBuilder(spanName)
-                .setParent(parent == null ? Context.current() : parent)
+                .setParent(parent)
                 .setSpanKind(kind == null ? SpanKind.INTERNAL : kind)
                 .startSpan();
+        
+        // Automatically set Azure attributes using the execution context
+        getAzureContext(executionContext).forEach(span::setAttribute);
+        
+        return span;
     }
 
-    public static Span startSpan(
-            String tracerName,
-            String spanName,
-            TraceContext traceContext,
-            SpanKind kind) {
+    /**
+     * Gets Azure Functions context attributes for log correlation.
+     * 
+     * <p>This method returns a map of key-value pairs that can be used to correlate logs
+     * with Azure Functions context and the current OpenTelemetry span. The attributes include:
+     * 
+     * <ul>
+     *   <li><strong>Azure resource attributes:</strong> service.name, cloud.provider, cloud.region, etc.</li>
+     *   <li><strong>Function-specific attributes:</strong> faas.name, faas.invocation_id, faas.instance</li>
+     *   <li><strong>Runtime attributes:</strong> process.pid, #AzFuncLiveLogsSessionId (from trace context)</li>
+     * </ul>
+     * 
+     * <p>Usage examples:
+     * <pre>{@code
+     * // With SLF4J structured logging
+     * Map<String, String> context = FunctionsOpenTelemetry.getAzureContext(executionContext);
+     * logger.info("Processing request", context);
+     * 
+     * // With MDC
+     * Map<String, String> context = FunctionsOpenTelemetry.getAzureContext(executionContext);
+     * context.forEach(MDC::put);
+     * logger.info("Processing request");
+     * MDC.clear();
+     * 
+     * // With custom formatting
+     * Map<String, String> context = FunctionsOpenTelemetry.getAzureContext(executionContext);
+     * logger.info("Processing request - {}", context);
+     * }</pre>
+     * 
+     * @param executionContext the Azure Functions execution context containing function name and invocation ID
+     * @return a map of context attributes that can be used for log correlation
+     */
+    public static Map<String, String> getAzureContext(ExecutionContext executionContext) {
+        if (executionContext == null) {
+            throw new IllegalArgumentException("executionContext must not be null");
+        }
+        
+        Map<String, String> attributes = new HashMap<>();
+        
+        // Add cached Azure resource attributes
+        addAzureResourceAttributes(attributes);
+        
+        // Add function-specific attributes from execution context
+        String functionName = executionContext.getFunctionName();
+        if (functionName != null && !functionName.isEmpty()) {
+            attributes.put("faas.name", functionName);
+        }
+        
+        String invocationId = executionContext.getInvocationId();
+        if (invocationId != null && !invocationId.isEmpty()) {
+            attributes.put("faas.invocation_id", invocationId);
+        }
+        
+        // Add trace context attributes (HostInstanceId, ProcessId, etc.)
+        TraceContext traceContext = executionContext.getTraceContext();
+        if (traceContext != null && traceContext.getAttributes() != null) {
+            Map<String, String> traceAttributes = traceContext.getAttributes();
+            
+            // Add HostInstanceId if available
+            String hostInstanceId = traceAttributes.get("HostInstanceId");
+            if (hostInstanceId != null && !hostInstanceId.isEmpty()) {
+                attributes.put("faas.instance", hostInstanceId);
+            }
+            
+            // Add ProcessId if available
+            String processId = traceAttributes.get("ProcessId");
+            if (processId != null && !processId.isEmpty()) {
+                attributes.put("process.pid", processId);
+            }
+            
+            // Add AzFuncLiveLogsSessionId if available
+            String liveLogsSessionId = traceAttributes.get("#AzFuncLiveLogsSessionId");
+            if (liveLogsSessionId != null && !liveLogsSessionId.isEmpty()) {
+                attributes.put("#AzFuncLiveLogsSessionId", liveLogsSessionId);
+            }
+        }
+        
+        return attributes;
+    }
 
-        Context parent = sdk().getPropagators()
-                .getTextMapPropagator()
-                .extract(Context.current(), traceContext, TRACE_CONTEXT_GETTER);
-        return startSpan(tracerName, spanName, parent, kind);
+    /**
+     * Gets Azure resource attributes, initializing cache if needed.
+     */
+    private static Map<String, String> getAzureResourceAttributes() {
+        if (cachedAzureResourceAttributes == null) {
+            synchronized (FunctionsOpenTelemetry.class) {
+                if (cachedAzureResourceAttributes == null) {
+                    cachedAzureResourceAttributes = initializeAzureResourceAttributes();
+                }
+            }
+        }
+        return cachedAzureResourceAttributes;
+    }
+
+    /**
+     * Initializes Azure resource attributes from the environment.
+     */
+    private static Map<String, String> initializeAzureResourceAttributes() {
+        Map<String, String> attributes = new HashMap<>();
+        
+        try {
+            Resource azureResource = FunctionsResourceDetector.getResource();
+            azureResource.getAttributes().forEach((key, value) -> {
+                if (value != null) {
+                    attributes.put(key.getKey(), value.toString());
+                }
+            });
+        } catch (Exception e) {
+            // If resource detection fails, add basic attributes
+            attributes.put("service.name", "java-function-app");
+        }
+        
+        return attributes;
+    }
+
+    /**
+     * Adds cached Azure resource attributes to the given map.
+     */
+    private static void addAzureResourceAttributes(Map<String, String> attributes) {
+        attributes.putAll(getAzureResourceAttributes());
+    }
+
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private FunctionsOpenTelemetry() {
     }
 }

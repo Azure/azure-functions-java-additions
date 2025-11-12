@@ -14,16 +14,16 @@
 
     <groupId>com.microsoft.azure.functions</groupId>
     <artifactId>azure-functions-java-opentelemetry</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <name>Microsoft Azure Functions Java OpenTelemetry Support</name>
-    <description>This package contains classes/interfaces for advanced SDK-based type bindings for Azure Functions Java Worker.</description>
+    <description>OpenTelemetry integration for Azure Functions Java runtime. Requires an OpenTelemetry agent.</description>
     <url>https://azure.microsoft.com/en-us/services/functions</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.jupiter.version>5.13.0</junit.jupiter.version>
+        <junit.jupiter.version>5.9.3</junit.jupiter.version>
     </properties>
 
     <licenses>
@@ -33,9 +33,6 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
-
-
-
     <dependencies>
         <dependency>
             <groupId>com.microsoft.azure.functions</groupId>
@@ -49,17 +46,20 @@
             <version>1.1.0</version>
             <scope>provided</scope>
         </dependency>
+        <!-- OpenTelemetry dependencies -->
+        <!-- API is provided by the function app - must not be shaded to
+        maintain compatibility with the agent -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-api</artifactId>
             <version>1.49.0</version>
             <scope>provided</scope>
         </dependency>
+        <!-- SDK common is needed for resource detection - will be shaded to avoid conflicts -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+            <artifactId>opentelemetry-sdk-common</artifactId>
             <version>1.49.0</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -71,6 +71,18 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>1.9.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -94,6 +106,50 @@
             <plugin>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.4.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M8</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <relocations>
+                                <!-- Only shade SDK components - keep API unshaded for agent compatibility -->
+                                <relocation>
+                                    <pattern>io.opentelemetry.sdk</pattern>
+                                    <shadedPattern>com.microsoft.azure.functions.opentelemetry.shaded.otel.sdk</shadedPattern>
+                                </relocation>
+                                <!-- Also shade any other transitive dependencies that might conflict -->
+                                <relocation>
+                                    <pattern>io.opentelemetry.semconv</pattern>
+                                    <shadedPattern>com.microsoft.azure.functions.opentelemetry.shaded.otel.semconv</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

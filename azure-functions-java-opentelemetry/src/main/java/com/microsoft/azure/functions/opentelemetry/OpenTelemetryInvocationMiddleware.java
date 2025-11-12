@@ -1,5 +1,7 @@
 package com.microsoft.azure.functions.opentelemetry;
 
+import java.util.Map;
+
 import com.microsoft.azure.functions.internal.spi.middleware.Middleware;
 import com.microsoft.azure.functions.internal.spi.middleware.MiddlewareChain;
 import com.microsoft.azure.functions.internal.spi.middleware.MiddlewareContext;
@@ -9,38 +11,68 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
 
-
 /**
- * Middleware that starts a Span for every function invocation,
- * using the trace context from the host if available.
+ * OpenTelemetry middleware that creates spans for Azure Functions invocations.
+ * 
+ * <p>This middleware creates a span for each function invocation and adds Azure Functions
+ * specific attributes. It assumes an OpenTelemetry agent is present and configured.
+ * 
+ * <p><strong>Note:</strong> For log correlation, users should use the utility methods in
+ * {@link FunctionsOpenTelemetry#getAzureContext(com.microsoft.azure.functions.ExecutionContext)} to get context attributes
+ * and add them to their logs in the way that best fits their logging framework.
  */
 public class OpenTelemetryInvocationMiddleware implements Middleware {
 
-    public OpenTelemetryInvocationMiddleware() {
-        FunctionsOpenTelemetry.initialize();
-    }
-
+    /**
+     * Creates a span for the function invocation with tracing context and Azure Functions attributes.
+     * 
+     * <p>The span includes the following attributes:
+     * <ul>
+     *   <li>{@code faas.name} - The function name</li>
+     *   <li>{@code faas.invocation_id} - The unique invocation ID</li>
+     *   <li>Azure resource attributes - service.name, cloud.provider, cloud.region, etc.</li>
+     * </ul>
+     * 
+     * @param context the middleware context containing function metadata
+     * @param chain the middleware chain to continue execution
+     * @throws Exception if span creation fails or the function execution throws an exception
+     */
     @Override
     public void invoke(MiddlewareContext context, MiddlewareChain chain) throws Exception {
-        String spanName = context.getFunctionName();
-        String tracerName = "azure.functions.worker";
+        Span invocationSpan = null;
+        
+        try {
+            // The recommended format is {verb} {object} for clarity and
+            // consistency. In our case 'function FunctionName'
+            String spanName = "function " + context.getFunctionName();
 
-        FunctionsOpenTelemetry.setLogger(context.getLogger());
-        Span invocationSpan = FunctionsOpenTelemetry.startSpan(spanName, tracerName, context.getTraceContext(), SpanKind.INTERNAL);
+            // Create and start the function invocation span with Azure attributes automatically set
+            invocationSpan = FunctionsOpenTelemetry.startSpan(
+                spanName, 
+                context,  // MiddlewareContext extends ExecutionContext
+                SpanKind.INTERNAL
+            );
+            
+            try (Scope ignored = invocationSpan.makeCurrent()) {
+                // Continue with the middleware chain
+                chain.doNext(context);
 
-        try (Scope ignored = invocationSpan.makeCurrent()) {
-            invocationSpan.setAttribute("faas.invocation_id", context.getInvocationId());
-            invocationSpan.setAttribute("faas.name", context.getFunctionName());
-
-            // Delegate to the rest of the chain
+            } catch (Throwable throwable) {
+                // Record exception and set error status
+                invocationSpan.recordException(throwable);
+                invocationSpan.setStatus(StatusCode.ERROR, throwable.getMessage());
+                throw throwable;
+            }
+            
+        } catch (Exception spanCreationException) {
+            // If span creation fails, continue without tracing to avoid breaking function execution
+            // This could happen if OpenTelemetry agent is misconfigured or has issues
             chain.doNext(context);
-
-        } catch (Throwable throwable) {          // capture any user exception
-            invocationSpan.recordException(throwable);
-            invocationSpan.setStatus(StatusCode.ERROR, throwable.getMessage());
-            throw throwable;                     // keep behaviour unchanged
         } finally {
-            invocationSpan.end();
+            // End the span if it was successfully created
+            if (invocationSpan != null) {
+                invocationSpan.end();
+            }
         }
     }
 }

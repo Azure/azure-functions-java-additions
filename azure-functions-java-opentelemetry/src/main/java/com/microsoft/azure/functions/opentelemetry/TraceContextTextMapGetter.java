@@ -4,15 +4,12 @@ import com.microsoft.azure.functions.TraceContext;
 import io.opentelemetry.context.propagation.TextMapGetter;
 
 /**
- * A singleton {@link TextMapGetter} that adapts an Azure Functions
- * {@link TraceContext} to OpenTelemetry’s propagation API.
- *
- * <p>Implementation is deliberately allocation-free:
- * the enum constant {@link #INSTANCE} is reused for every extraction call.</p>
+ * TextMapGetter that extracts trace context from Azure Functions TraceContext.
+ * Uses enum singleton pattern for performance.
  */
 public enum TraceContextTextMapGetter implements TextMapGetter<TraceContext> {
 
-    /** The single shared instance. */
+    /** Singleton instance. */
     INSTANCE;
 
     @Override
@@ -25,14 +22,14 @@ public enum TraceContextTextMapGetter implements TextMapGetter<TraceContext> {
         if (carrier == null || key == null) {
             return null;
         }
-        // Match W3C header names first
+        // Check W3C headers first
         if ("traceparent".equalsIgnoreCase(key)) {
             return carrier.getTraceparent();
         }
         if ("tracestate".equalsIgnoreCase(key)) {
             return carrier.getTracestate();
         }
-        // Fallback to custom attributes
+        // Fall back to custom attributes
         return carrier.getAttributes().get(key);
     }
 }
