@@ -1,7 +1,5 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
-import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
-
 import java.lang.reflect.Parameter;
 import java.util.*;
 
@@ -9,7 +7,7 @@ import java.util.*;
  * MetaData for building a BlobContainerClient, storing fields such as containerName,
  * plus the environment variable name used for connection string or managed identity prefix.
  */
-public class BlobContainerMetaData implements SdkTypeMetaData {
+public class BlobContainerMetaData implements BlobMetaData {
     private final Map<String, Object> rawValues = new HashMap<>();
 
     private String containerName;

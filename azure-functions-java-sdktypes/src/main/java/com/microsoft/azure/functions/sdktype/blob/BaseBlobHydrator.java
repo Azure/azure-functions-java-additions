@@ -1,5 +1,6 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
+import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkHydrationException;
 
 import java.lang.reflect.Method;
@@ -14,8 +15,22 @@ import java.util.logging.Logger;
  * structure is defined in createInstance(), but specific steps are delegated to
  * subclass implementations.
  */
-public abstract class BaseBlobHydrator<T> {
+public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTypeHydrator<T> {
     protected static final Logger LOGGER = Logger.getLogger(BaseBlobHydrator.class.getName());
+
+    /**
+     * Implements the SdkTypeHydrator interface method. Extracts the connection environment variable
+     * from metadata and delegates to the template method.
+     * 
+     * @param metaData the metadata containing configuration details
+     * @return the built client instance
+     * @throws Exception if client creation fails
+     */
+    @Override
+    public Object createInstance(T metaData) throws Exception {
+        LOGGER.info("Starting " + this.getClass().getSimpleName() + ".createInstance()");
+        return createInstance(metaData, metaData.getConnectionEnvVar());
+    }
 
     /**
      * Main orchestration method that determines authentication type and delegates to subclass methods.
@@ -26,7 +41,7 @@ public abstract class BaseBlobHydrator<T> {
      * @return the built client instance
      * @throws Exception if client creation fails
      */
-    protected Object createInstance(T metaData, String envVar) throws Exception {
+    private Object createInstance(T metaData, String envVar) throws Exception {
         LOGGER.info("Starting hydration with environment variable: " + envVar);
 
         String maybeConnString = System.getenv(envVar);

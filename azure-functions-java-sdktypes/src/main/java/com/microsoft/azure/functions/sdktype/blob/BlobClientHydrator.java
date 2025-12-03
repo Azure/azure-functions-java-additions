@@ -1,7 +1,5 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
-import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
-
 import java.lang.reflect.Method;
 
 /**
@@ -9,13 +7,7 @@ import java.lang.reflect.Method;
  * potentially throwing SdkHydrationException if reflection or environment
  * variables are invalid. Supports both connection strings and managed identity.
  */
-public class BlobClientHydrator extends BaseBlobHydrator<BlobClientMetaData> implements SdkTypeHydrator<BlobClientMetaData> {
-
-    @Override
-    public Object createInstance(BlobClientMetaData metaData) throws Exception {
-        LOGGER.info("Starting BlobClientHydrator.createInstance()");
-        return createInstance(metaData, metaData.getConnectionEnvVar());
-    }
+public class BlobClientHydrator extends BaseBlobHydrator<BlobClientMetaData> {
 
     @Override
     protected Object buildWithConnectionString(BlobClientMetaData metaData, String connStr) throws Exception {

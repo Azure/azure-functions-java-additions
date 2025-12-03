@@ -1,7 +1,5 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
-import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
-
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,7 +12,7 @@ import java.util.Set;
  * Example metaData class for storing fields: containerName, blobName, etc.
  * We store them in a map or direct fields. We'll show a map approach.
  */
-public class BlobClientMetaData implements SdkTypeMetaData {
+public class BlobClientMetaData implements BlobMetaData {
     private final Map<String,Object> rawValues = new HashMap<>();
 
     // typed fields after parse
