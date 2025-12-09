@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.sdktype;
 
 import com.microsoft.azure.functions.sdktype.exceptions.SdkAnalysisException;
@@ -10,11 +16,11 @@ public class SdkParameterAnalyzer {
 
     public SdkParameterAnalysisResult analyze(Method method) {
         final SdkParameterAnalysisResult result = new SdkParameterAnalysisResult();
-        for (Parameter param : method.getParameters()) {
+        for (final Parameter param : method.getParameters()) {
             final String fqcn = param.getType().getName();
             if (registry.isTypeSupported(fqcn)) {
                 try {
-                    SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
+                    final SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
                     result.addSdkTypeMetaData(sdkTypeMetaData);
                 } catch (Exception ex) {
                     // Wrap the underlying issue in a custom SdkAnalysisException for clarity
@@ -26,5 +32,7 @@ public class SdkParameterAnalyzer {
         return result;
     }
 
-    public SdkTypeRegistry getRegistry() { return this.registry; }
+    public SdkTypeRegistry getRegistry() {
+        return this.registry;
+    }
 }

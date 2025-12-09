@@ -1,6 +1,10 @@
-package com.microsoft.azure.functions.sdktype;
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
 
-import java.lang.reflect.Parameter;
+package com.microsoft.azure.functions.sdktype;
 
 /**
  * A recognized SDK type that:
@@ -36,9 +40,9 @@ public interface SdkType<M extends SdkTypeMetaData> {
      * @return The fully built client or SDK object.
      */
     default Object buildInstance() throws Exception {
-        M metaData = getMetaData();
+        final M metaData = getMetaData();
         metaData.parseAndVerify();
-        SdkTypeHydrator<M> hydrator = getHydrator();
+        final SdkTypeHydrator<M> hydrator = getHydrator();
         try {
             return hydrator.createInstance(metaData);
         } catch (Exception ex) {

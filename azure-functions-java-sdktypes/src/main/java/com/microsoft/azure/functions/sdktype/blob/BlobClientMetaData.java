@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.sdktype.blob;
 
 import java.lang.reflect.Parameter;
@@ -13,7 +19,7 @@ import java.util.Set;
  * We store them in a map or direct fields. We'll show a map approach.
  */
 public class BlobClientMetaData implements BlobMetaData {
-    private final Map<String,Object> rawValues = new HashMap<>();
+    private final Map<String, Object> rawValues = new HashMap<>();
 
     // typed fields after parse
     private String containerName;
@@ -67,10 +73,19 @@ public class BlobClientMetaData implements BlobMetaData {
     }
 
     @Override
-    public String getFqcn() { return fqcn; }
+    public String getFqcn() {
+        return fqcn;
+    }
 
-    public String getContainerName() { return containerName; }
-    public String getBlobName() { return blobName; }
-    public String getConnectionEnvVar() { return connectionEnvVar; }
+    public String getContainerName() {
+        return containerName;
+    }
+
+    public String getBlobName() {
+        return blobName;
+    }
+
+    public String getConnectionEnvVar() {
+        return connectionEnvVar;
+    }
 }
-
