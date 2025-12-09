@@ -10,7 +10,7 @@ import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 public interface BlobMetaData extends SdkTypeMetaData {
     /**
      * Gets the environment variable name used for connection string or managed identity prefix.
-     * 
+     *
      * @return the connection environment variable name
      */
     String getConnectionEnvVar();
