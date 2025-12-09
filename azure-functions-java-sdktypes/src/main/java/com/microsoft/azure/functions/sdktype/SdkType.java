@@ -23,11 +23,15 @@ public interface SdkType<M extends SdkTypeMetaData> {
     /**
      * Return the associated metadata object, so
      * the worker can fill it with fields if needed.
+     *
+     * @return the metadata object
      */
     M getMetaData();
 
     /**
      * Return the hydrator that builds the final instance using the metaData.
+     *
+     * @return the hydrator
      */
     SdkTypeHydrator<M> getHydrator();
 
@@ -35,9 +39,8 @@ public interface SdkType<M extends SdkTypeMetaData> {
      * Build or retrieve a final instance of the SDK object.
      * Calls parseAndVerify() on metaData then calls the hydrator.
      *
-     * @throws com.microsoft.azure.functions.sdktype.exceptions.SdkTypeCreationException
-     *         if creation fails inside the hydrator or parseAndVerify throws an error.
      * @return The fully built client or SDK object.
+     * @throws Exception if creation fails inside the hydrator or parseAndVerify throws an error.
      */
     default Object buildInstance() throws Exception {
         final M metaData = getMetaData();

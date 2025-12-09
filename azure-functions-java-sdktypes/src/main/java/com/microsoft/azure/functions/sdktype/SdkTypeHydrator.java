@@ -15,6 +15,10 @@ package com.microsoft.azure.functions.sdktype;
 public interface SdkTypeHydrator<M extends SdkTypeMetaData> {
     /**
      * Build the final object using data from the metaData.
+     *
+     * @param metaData the metadata containing configuration details
+     * @return the built client instance
+     * @throws Exception if client creation fails
      */
     Object createInstance(M metaData) throws Exception;
 }
