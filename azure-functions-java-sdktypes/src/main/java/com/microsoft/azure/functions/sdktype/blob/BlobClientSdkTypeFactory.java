@@ -19,7 +19,7 @@ public class BlobClientSdkTypeFactory implements SdkTypeFactory {
 
     @Override
     public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws SdkTypeCreationException {
-        BlobClientMetaData blobClientMetaData = (BlobClientMetaData) metaData;
+        final BlobClientMetaData blobClientMetaData = (BlobClientMetaData) metaData;
         return new BlobClientSdkType(blobClientMetaData, new BlobClientHydrator());
     }
 }

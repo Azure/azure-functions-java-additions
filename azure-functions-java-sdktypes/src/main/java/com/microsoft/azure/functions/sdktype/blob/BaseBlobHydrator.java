@@ -44,7 +44,7 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
     private Object createInstance(T metaData, String envVar) throws Exception {
         LOGGER.info("Starting hydration with environment variable: " + envVar);
 
-        String maybeConnString = System.getenv(envVar);
+        final String maybeConnString = System.getenv(envVar);
         
         if (maybeConnString != null && isConnectionString(maybeConnString)) {
             LOGGER.info("Detected connection string usage from environment variable: " + envVar);
@@ -57,8 +57,8 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
             final String blobServiceUri = System.getenv(envVar + "__blobServiceUri");
             final String clientId = System.getenv(envVar + "__clientId");
 
-            String endpoint = resolveEndpoint(accountName, serviceUri, blobServiceUri);
-            Object credential = buildManagedIdentityCredential(clientId);
+            final String endpoint = resolveEndpoint(accountName, serviceUri, blobServiceUri);
+            final Object credential = buildManagedIdentityCredential(clientId);
 
             return buildWithManagedIdentity(metaData, endpoint, credential);
         }
@@ -109,7 +109,7 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
      */
     protected String resolveEndpoint(String accountName, String serviceUri, String blobServiceUri) {
         if (accountName != null && !accountName.isEmpty()) {
-            String ep = String.format("https://%s.blob.core.windows.net", accountName);
+            final String ep = String.format("https://%s.blob.core.windows.net", accountName);
             LOGGER.info("Resolved endpoint from accountName: " + ep);
             return ep;
         }
@@ -134,19 +134,19 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
     protected Object buildManagedIdentityCredential(String clientId) throws Exception {
         LOGGER.info("Building DefaultAzureCredential for managed identity.");
         
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> builderClass = cl.loadClass("com.azure.identity.DefaultAzureCredentialBuilder");
-        Object builder = builderClass.getDeclaredConstructor().newInstance();
+        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        final Class<?> builderClass = cl.loadClass("com.azure.identity.DefaultAzureCredentialBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
 
         if (clientId != null && !clientId.isEmpty()) {
             LOGGER.info("Using user-assigned managed identity: " + clientId);
-            Method micidMethod = builderClass.getMethod("managedIdentityClientId", String.class);
+            final Method micidMethod = builderClass.getMethod("managedIdentityClientId", String.class);
             micidMethod.invoke(builder, clientId);
         } else {
             LOGGER.info("Using system-assigned managed identity (no clientId).");
         }
 
-        Method buildMethod = builderClass.getMethod("build");
+        final Method buildMethod = builderClass.getMethod("build");
         return buildMethod.invoke(builder);
     }
 }

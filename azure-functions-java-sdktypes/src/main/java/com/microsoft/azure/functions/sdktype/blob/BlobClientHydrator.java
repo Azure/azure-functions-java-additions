@@ -11,21 +11,21 @@ public class BlobClientHydrator extends BaseBlobHydrator<BlobClientMetaData> {
 
     @Override
     protected Object buildWithConnectionString(BlobClientMetaData metaData, String connStr) throws Exception {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobClientBuilder");
-        Object builder = builderClass.getDeclaredConstructor().newInstance();
+        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        final Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobClientBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
 
-        Method connMethod = builderClass.getMethod("connectionString", String.class);
+        final Method connMethod = builderClass.getMethod("connectionString", String.class);
         connMethod.invoke(builder, connStr);
 
-        Method contMethod = builderClass.getMethod("containerName", String.class);
+        final Method contMethod = builderClass.getMethod("containerName", String.class);
         contMethod.invoke(builder, metaData.getContainerName());
 
-        Method bNameMethod = builderClass.getMethod("blobName", String.class);
+        final Method bNameMethod = builderClass.getMethod("blobName", String.class);
         bNameMethod.invoke(builder, metaData.getBlobName());
 
-        Method buildM = builderClass.getMethod("buildClient");
-        Object blobClient = buildM.invoke(builder);
+        final Method buildM = builderClass.getMethod("buildClient");
+        final Object blobClient = buildM.invoke(builder);
         LOGGER.info("Successfully built BlobClient using connection string approach.");
         return blobClient;
     }
@@ -34,25 +34,25 @@ public class BlobClientHydrator extends BaseBlobHydrator<BlobClientMetaData> {
     protected Object buildWithManagedIdentity(BlobClientMetaData metaData, String endpoint, Object credential) throws Exception {
         LOGGER.info("buildWithManagedIdentity for container: " + metaData.getContainerName() + ", blob: " + metaData.getBlobName() + " endpoint: " + endpoint);
 
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobClientBuilder");
-        Object builder = builderClass.getDeclaredConstructor().newInstance();
+        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        final Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobClientBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
 
-        Class<?> tokenCredClass = cl.loadClass("com.azure.core.credential.TokenCredential");
-        Method credMethod = builderClass.getMethod("credential", tokenCredClass);
+        final Class<?> tokenCredClass = cl.loadClass("com.azure.core.credential.TokenCredential");
+        final Method credMethod = builderClass.getMethod("credential", tokenCredClass);
         credMethod.invoke(builder, credential);
 
-        Method endpointMethod = builderClass.getMethod("endpoint", String.class);
+        final Method endpointMethod = builderClass.getMethod("endpoint", String.class);
         endpointMethod.invoke(builder, endpoint);
 
-        Method contMethod = builderClass.getMethod("containerName", String.class);
+        final Method contMethod = builderClass.getMethod("containerName", String.class);
         contMethod.invoke(builder, metaData.getContainerName());
 
-        Method bNameMethod = builderClass.getMethod("blobName", String.class);
+        final Method bNameMethod = builderClass.getMethod("blobName", String.class);
         bNameMethod.invoke(builder, metaData.getBlobName());
 
-        Method buildM = builderClass.getMethod("buildClient");
-        Object blobClient = buildM.invoke(builder);
+        final Method buildM = builderClass.getMethod("buildClient");
+        final Object blobClient = buildM.invoke(builder);
         LOGGER.info("Successfully built BlobClient using managed identity approach.");
         return blobClient;
     }

@@ -11,18 +11,18 @@ public class BlobContainerHydrator extends BaseBlobHydrator<BlobContainerMetaDat
 
     @Override
     protected Object buildWithConnectionString(BlobContainerMetaData metaData, String connStr) throws Exception {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobContainerClientBuilder");
-        Object builder = builderClass.getDeclaredConstructor().newInstance();
+        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        final Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobContainerClientBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
 
-        Method connMethod = builderClass.getMethod("connectionString", String.class);
+        final Method connMethod = builderClass.getMethod("connectionString", String.class);
         connMethod.invoke(builder, connStr);
 
-        Method contMethod = builderClass.getMethod("containerName", String.class);
+        final Method contMethod = builderClass.getMethod("containerName", String.class);
         contMethod.invoke(builder, metaData.getContainerName());
 
-        Method buildM = builderClass.getMethod("buildClient");
-        Object containerClient = buildM.invoke(builder);
+        final Method buildM = builderClass.getMethod("buildClient");
+        final Object containerClient = buildM.invoke(builder);
         LOGGER.info("Successfully built BlobContainerClient using connection string approach.");
         return containerClient;
     }
@@ -31,22 +31,22 @@ public class BlobContainerHydrator extends BaseBlobHydrator<BlobContainerMetaDat
     protected Object buildWithManagedIdentity(BlobContainerMetaData metaData, String endpoint, Object credential) throws Exception {
         LOGGER.info("buildWithManagedIdentity for container: " + metaData.getContainerName() + " endpoint: " + endpoint);
 
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobContainerClientBuilder");
-        Object builder = builderClass.getDeclaredConstructor().newInstance();
+        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        final Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobContainerClientBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
 
-        Class<?> tokenCredClass = cl.loadClass("com.azure.core.credential.TokenCredential");
-        Method credMethod = builderClass.getMethod("credential", tokenCredClass);
+        final Class<?> tokenCredClass = cl.loadClass("com.azure.core.credential.TokenCredential");
+        final Method credMethod = builderClass.getMethod("credential", tokenCredClass);
         credMethod.invoke(builder, credential);
 
-        Method endpointMethod = builderClass.getMethod("endpoint", String.class);
+        final Method endpointMethod = builderClass.getMethod("endpoint", String.class);
         endpointMethod.invoke(builder, endpoint);
 
-        Method contMethod = builderClass.getMethod("containerName", String.class);
+        final Method contMethod = builderClass.getMethod("containerName", String.class);
         contMethod.invoke(builder, metaData.getContainerName());
 
-        Method buildM = builderClass.getMethod("buildClient");
-        Object containerClient = buildM.invoke(builder);
+        final Method buildM = builderClass.getMethod("buildClient");
+        final Object containerClient = buildM.invoke(builder);
         LOGGER.info("Successfully built BlobContainerClient using managed identity approach.");
         return containerClient;
     }

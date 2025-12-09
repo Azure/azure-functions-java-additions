@@ -30,7 +30,7 @@ public class SdkTypeRegistry {
      * Build-time usage: create a minimal SdkTypeMetaData from the recognized fqcn + param.
      */
     public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws Exception {
-        SdkTypeFactory factory = knownTypes.get(fqcn);
+        final SdkTypeFactory factory = knownTypes.get(fqcn);
         if (factory == null) {
             throw new SdkRegistryException("Unrecognized SdkType: " + fqcn);
         }
@@ -41,8 +41,8 @@ public class SdkTypeRegistry {
      * Runtime usage: produce the final SdkType from the stored metaData.
      */
     public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws Exception {
-        String fqcn = metaData.getFqcn(); // see below how we store this
-        SdkTypeFactory factory = knownTypes.get(fqcn);
+        final String fqcn = metaData.getFqcn(); // see below how we store this
+        final SdkTypeFactory factory = knownTypes.get(fqcn);
         if (factory == null) {
             throw new SdkRegistryException("Unrecognized SdkType: " + fqcn);
         }

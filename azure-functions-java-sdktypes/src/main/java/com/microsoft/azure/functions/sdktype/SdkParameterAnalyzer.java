@@ -9,9 +9,9 @@ public class SdkParameterAnalyzer {
     private final SdkTypeRegistry registry = new SdkTypeRegistry();
 
     public SdkParameterAnalysisResult analyze(Method method) {
-        SdkParameterAnalysisResult result = new SdkParameterAnalysisResult();
+        final SdkParameterAnalysisResult result = new SdkParameterAnalysisResult();
         for (Parameter param : method.getParameters()) {
-            String fqcn = param.getType().getName();
+            final String fqcn = param.getType().getName();
             if (registry.isTypeSupported(fqcn)) {
                 try {
                     SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
