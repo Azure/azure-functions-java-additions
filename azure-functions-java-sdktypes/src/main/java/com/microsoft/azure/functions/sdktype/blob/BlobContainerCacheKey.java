@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.cache.CacheKey;
@@ -19,11 +25,15 @@ public class BlobContainerCacheKey implements CacheKey {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof BlobContainerCacheKey)) return false;
-        BlobContainerCacheKey that = (BlobContainerCacheKey) o;
-        return Objects.equals(containerName, that.containerName) &&
-                Objects.equals(connectionEnvVar, that.connectionEnvVar);
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof BlobContainerCacheKey)) {
+            return false;
+        }
+        final BlobContainerCacheKey that = (BlobContainerCacheKey) o;
+        return Objects.equals(containerName, that.containerName)
+                && Objects.equals(connectionEnvVar, that.connectionEnvVar);
     }
 
     @Override
@@ -33,9 +43,9 @@ public class BlobContainerCacheKey implements CacheKey {
 
     @Override
     public String toString() {
-        return "BlobContainerCacheKey{" +
-                "containerName='" + containerName + '\'' +
-                ", connectionEnvVar='" + connectionEnvVar + '\'' +
-                '}';
+        return "BlobContainerCacheKey{"
+                + "containerName='" + containerName + '\''
+                + ", connectionEnvVar='" + connectionEnvVar + '\''
+                + '}';
     }
 }

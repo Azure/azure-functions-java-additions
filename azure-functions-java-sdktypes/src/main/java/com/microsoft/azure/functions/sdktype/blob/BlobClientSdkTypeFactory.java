@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.sdktype.SdkType;
@@ -19,7 +25,7 @@ public class BlobClientSdkTypeFactory implements SdkTypeFactory {
 
     @Override
     public SdkType<?> createSdkType(SdkTypeMetaData metaData) throws SdkTypeCreationException {
-        BlobClientMetaData blobClientMetaData = (BlobClientMetaData) metaData;
+        final BlobClientMetaData blobClientMetaData = (BlobClientMetaData) metaData;
         return new BlobClientSdkType(blobClientMetaData, new BlobClientHydrator());
     }
 }

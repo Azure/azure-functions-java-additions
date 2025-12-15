@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.sdktype;
 
 import java.lang.reflect.Parameter;
@@ -16,6 +22,8 @@ public interface SdkTypeMetaData {
     /**
      * If code wants to do a fully generic approach with
      * metadata keys, we can have a method for a set of required keys.
+     *
+     * @return the set of required field names
      */
     default Set<String> getRequiredFields() {
         return Collections.emptySet();
@@ -23,11 +31,17 @@ public interface SdkTypeMetaData {
 
     /**
      * The worker or SdkType might call this to retrieve a raw field value.
+     *
+     * @param key the field name
+     * @return the field value
      */
     Object getFieldValue(String key);
 
     /**
      * The worker or SdkType might call this to store a raw field value.
+     *
+     * @param key the field name
+     * @param value the field value
      */
     void setFieldValue(String key, Object value);
 
@@ -40,12 +54,16 @@ public interface SdkTypeMetaData {
 
     /**
      * Return a Parameter object for the argument that uses this SDK type.
+     *
+     * @return the parameter
      */
     Parameter getParam();
 
     /**
      * The recognized fqcn, used so the registry can do createSdkType(...)
      * at runtime without re-checking param type.
+     *
+     * @return the fully qualified class name
      */
     String getFqcn();
 }
