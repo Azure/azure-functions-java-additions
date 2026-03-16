@@ -12,5 +12,6 @@
 		<module>azure-functions-java-spi</module>
         <module>azure-functions-java-sdktypes</module>
         <module>azure-functions-java-opentelemetry</module>
+        <module>azure-functions-java-mcp</module>
     </modules>
 </project>
