@@ -1,6 +1,10 @@
-package com.microsoft.azure.functions.opentelemetry;
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
 
-import java.util.Map;
+package com.microsoft.azure.functions.opentelemetry;
 
 import com.microsoft.azure.functions.internal.spi.middleware.Middleware;
 import com.microsoft.azure.functions.internal.spi.middleware.MiddlewareChain;
@@ -44,7 +48,7 @@ public class OpenTelemetryInvocationMiddleware implements Middleware {
         try {
             // The recommended format is {verb} {object} for clarity and
             // consistency. In our case 'function FunctionName'
-            String spanName = "function " + context.getFunctionName();
+            final String spanName = "function " + context.getFunctionName();
 
             // Create and start the function invocation span with Azure attributes automatically set
             invocationSpan = FunctionsOpenTelemetry.startSpan(

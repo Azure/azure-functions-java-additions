@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.opentelemetry;
 
 import com.microsoft.azure.functions.ExecutionContext;
@@ -37,12 +43,12 @@ public final class FunctionsOpenTelemetry {
      */
     public static io.opentelemetry.api.OpenTelemetry getOpenTelemetry() {
         try {
-            io.opentelemetry.api.OpenTelemetry otel = GlobalOpenTelemetry.get();
+            final io.opentelemetry.api.OpenTelemetry otel = GlobalOpenTelemetry.get();
             
             if (isNoOp(otel)) {
                 throw new IllegalStateException(
-                    "No OpenTelemetry agent detected. This library requires an OpenTelemetry agent to be present. " +
-                    "Please ensure your application is running with an OpenTelemetry Java agent."
+                    "No OpenTelemetry agent detected. This library requires an OpenTelemetry agent to be present. "
+                    + "Please ensure your application is running with an OpenTelemetry Java agent."
                 );
             }
             
@@ -52,8 +58,8 @@ public final class FunctionsOpenTelemetry {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException(
-                "Failed to get OpenTelemetry instance: " + e.getMessage() + 
-                ". Please ensure your application is running with a properly configured OpenTelemetry Java agent.",
+                "Failed to get OpenTelemetry instance: " + e.getMessage()
+                + ". Please ensure your application is running with a properly configured OpenTelemetry Java agent.",
                 e
             );
         }
@@ -67,11 +73,11 @@ public final class FunctionsOpenTelemetry {
             return true;
         }
         // Check class name to detect no-op implementations
-        String className = otel.getClass().getName();
-        return className.contains("Noop") || 
-               className.contains("NoOp") || 
-               className.contains("DefaultOpenTelemetry") ||
-               className.contains("ObfuscatedOpenTelemetry"); // Default GlobalOpenTelemetry wrapper
+        final String className = otel.getClass().getName();
+        return className.contains("Noop")
+               || className.contains("NoOp")
+               || className.contains("DefaultOpenTelemetry")
+               || className.contains("ObfuscatedOpenTelemetry"); // Default GlobalOpenTelemetry wrapper
     }
 
     /**
@@ -98,7 +104,7 @@ public final class FunctionsOpenTelemetry {
         }
         
         // Extract trace context from execution context
-        TraceContext traceContext = executionContext.getTraceContext();
+        final TraceContext traceContext = executionContext.getTraceContext();
         
         // Determine parent context
         Context parent = Context.current();
@@ -109,7 +115,7 @@ public final class FunctionsOpenTelemetry {
         }
         
         // Create the span
-        Span span = getOpenTelemetry().getTracer(TRACER_NAME)
+        final Span span = getOpenTelemetry().getTracer(TRACER_NAME)
                 .spanBuilder(spanName)
                 .setParent(parent)
                 .setSpanKind(kind == null ? SpanKind.INTERNAL : kind)
@@ -158,41 +164,41 @@ public final class FunctionsOpenTelemetry {
             throw new IllegalArgumentException("executionContext must not be null");
         }
         
-        Map<String, String> attributes = new HashMap<>();
+        final Map<String, String> attributes = new HashMap<>();
         
         // Add cached Azure resource attributes
         addAzureResourceAttributes(attributes);
         
         // Add function-specific attributes from execution context
-        String functionName = executionContext.getFunctionName();
+        final String functionName = executionContext.getFunctionName();
         if (functionName != null && !functionName.isEmpty()) {
             attributes.put("faas.name", functionName);
         }
         
-        String invocationId = executionContext.getInvocationId();
+        final String invocationId = executionContext.getInvocationId();
         if (invocationId != null && !invocationId.isEmpty()) {
             attributes.put("faas.invocation_id", invocationId);
         }
         
         // Add trace context attributes (HostInstanceId, ProcessId, etc.)
-        TraceContext traceContext = executionContext.getTraceContext();
+        final TraceContext traceContext = executionContext.getTraceContext();
         if (traceContext != null && traceContext.getAttributes() != null) {
-            Map<String, String> traceAttributes = traceContext.getAttributes();
+            final Map<String, String> traceAttributes = traceContext.getAttributes();
             
             // Add HostInstanceId if available
-            String hostInstanceId = traceAttributes.get("HostInstanceId");
+            final String hostInstanceId = traceAttributes.get("HostInstanceId");
             if (hostInstanceId != null && !hostInstanceId.isEmpty()) {
                 attributes.put("faas.instance", hostInstanceId);
             }
             
             // Add ProcessId if available
-            String processId = traceAttributes.get("ProcessId");
+            final String processId = traceAttributes.get("ProcessId");
             if (processId != null && !processId.isEmpty()) {
                 attributes.put("process.pid", processId);
             }
             
             // Add AzFuncLiveLogsSessionId if available
-            String liveLogsSessionId = traceAttributes.get("#AzFuncLiveLogsSessionId");
+            final String liveLogsSessionId = traceAttributes.get("#AzFuncLiveLogsSessionId");
             if (liveLogsSessionId != null && !liveLogsSessionId.isEmpty()) {
                 attributes.put("#AzFuncLiveLogsSessionId", liveLogsSessionId);
             }
@@ -219,10 +225,10 @@ public final class FunctionsOpenTelemetry {
      * Initializes Azure resource attributes from the environment.
      */
     private static Map<String, String> initializeAzureResourceAttributes() {
-        Map<String, String> attributes = new HashMap<>();
+        final Map<String, String> attributes = new HashMap<>();
         
         try {
-            Resource azureResource = FunctionsResourceDetector.getResource();
+            final Resource azureResource = FunctionsResourceDetector.getResource();
             azureResource.getAttributes().forEach((key, value) -> {
                 if (value != null) {
                     attributes.put(key.getKey(), value.toString());
