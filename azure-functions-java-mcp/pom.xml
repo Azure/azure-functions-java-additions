@@ -117,12 +117,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0-M8</version>
             </plugin>
-            <!-- Override parent's spotbugs to a version that supports Java 17 sealed types -->
-            <plugin>
-                <groupId>com.github.spotbugs</groupId>
-                <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.3.1</version>
-            </plugin>
+
         </plugins>
     </build>
 </project>
