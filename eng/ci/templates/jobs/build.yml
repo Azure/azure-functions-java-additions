@@ -19,14 +19,14 @@ jobs:
         Get-Command mvn
       displayName: 'Check Maven is installed'
     - pwsh: '& .\build.ps1'
-      displayName: 'Build project with java core library'
+      displayName: 'Build Java 11 libraries'
     - task: JavaToolInstaller@0
       inputs:
         versionSpec: '17'
         jdkArchitectureOption: 'x64'
         jdkSourceOption: 'PreInstalled'
-      displayName: 'Setup Java 17 for MCP module'
+      displayName: 'Setup Java 17'
     - pwsh: |
         cd azure-functions-java-mcp
         mvn clean install "-Dgpg.skip=true" -B
-      displayName: 'Build azure-functions-java-mcp (Java 17)'
+      displayName: 'Build Java 17 libraries'
