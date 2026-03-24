@@ -1,1 +1,1 @@
-mvn clean install -Dcheckstyle.skip -Dmaven.javadoc.skip=true -Dmaven.test.skip -U -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -B
+mvn clean install -Dcheckstyle.skip -Dmaven.javadoc.skip=true -Dmaven.test.skip -Dspotbugs.skip=true -U -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -B
