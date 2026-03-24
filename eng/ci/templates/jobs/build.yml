@@ -28,5 +28,5 @@ jobs:
       displayName: 'Setup Java 17 for MCP module'
     - pwsh: |
         cd azure-functions-java-mcp
-        mvn clean install -Dgpg.skip=true -Dspotbugs.skip=true -B
+        mvn clean install "-Dgpg.skip=true" -B
       displayName: 'Build azure-functions-java-mcp (Java 17)'
