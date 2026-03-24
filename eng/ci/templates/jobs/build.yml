@@ -8,12 +8,12 @@ jobs:
       os: windows
 
     steps:
-    - task: JavaToolInstaller@0 # This step is necessary as Linux image has Java 11 as default
+    - task: JavaToolInstaller@0 # Java 17 required for azure-functions-java-mcp module (MCP SDK uses sealed interfaces/records)
       inputs:
-        versionSpec: '11'
+        versionSpec: '17'
         jdkArchitectureOption: 'x64'
         jdkSourceOption: 'PreInstalled'
-      displayName: 'Setup Java for Linux'
+      displayName: 'Setup Java 17'
     - pwsh: |
         Write-Host "Java_HOME: $JAVA_HOME"
         Get-Command mvn
