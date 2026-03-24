@@ -117,7 +117,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0-M8</version>
             </plugin>
-            <!-- Override parent's spotbugs 3.1.6 (Groovy incompatible with Java 17) -->
+            <!-- Override parent's spotbugs 3.1.6 (Groovy incompatible with Java 17 JVM) -->
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>

@@ -97,12 +97,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Override parent's spotbugs 3.1.6 (Groovy incompatible with Java 17) -->
-            <plugin>
-                <groupId>com.github.spotbugs</groupId>
-                <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.3.1</version>
-            </plugin>
         </plugins>
     </build>
 
