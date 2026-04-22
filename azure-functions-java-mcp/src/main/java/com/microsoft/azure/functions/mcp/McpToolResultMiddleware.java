@@ -96,6 +96,9 @@ public class McpToolResultMiddleware implements Middleware {
 
         if (returnValue instanceof List<?>) {
             List<?> list = (List<?>) returnValue;
+            // Intentional: we only check the first element's type, matching the Python SDK's
+            // approach. A mixed-type list (e.g., Content + String) would fail during
+            // serialization and be caught by the caller's error handling.
             if (!list.isEmpty() && list.get(0) instanceof Content) {
                 return McpToolResult.fromContentList((List<Content>) list);
             }

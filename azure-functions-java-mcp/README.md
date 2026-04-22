@@ -50,7 +50,9 @@ The middleware is auto-discovered by the Azure Functions Java worker — no addi
 
 ### Structured content with `@McpContent`
 
-Annotate a POJO with `@McpContent` to automatically serialize it as both text content (for backward compatibility) and structured content (for clients that support it):
+Annotate a POJO with `@McpContent` to automatically serialize it as both text content (for backward compatibility) and structured content (for clients that support it).
+
+> **Note:** `@McpContent` POJOs are serialized using Gson (not Jackson). Use `@SerializedName` for custom field names. Jackson annotations like `@JsonProperty` will be ignored.
 
 ```java
 import com.microsoft.azure.functions.mcp.McpContent;

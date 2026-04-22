@@ -90,8 +90,12 @@ public class McpToolResult {
      *
      * @param contentBlock the content block (e.g., {@code TextContent}, {@code ImageContent}, {@code ResourceLink})
      * @return an McpToolResult wrapping the content block
+     * @throws IllegalArgumentException if {@code contentBlock} is {@code null}
      */
     public static McpToolResult fromContent(Content contentBlock) {
+        if (contentBlock == null) {
+            throw new IllegalArgumentException("contentBlock must not be null");
+        }
         String blockType = contentBlock.type();
         return new McpToolResult(blockType, serializeContent(contentBlock), null);
     }
@@ -101,8 +105,15 @@ public class McpToolResult {
      *
      * @param contentBlocks the list of content blocks
      * @return an McpToolResult wrapping the content blocks as a multi-content result
+     * @throws IllegalArgumentException if {@code contentBlocks} is null or empty
      */
     public static McpToolResult fromContentList(List<? extends Content> contentBlocks) {
+        if (contentBlocks == null) {
+            throw new IllegalArgumentException("contentBlocks must not be null");
+        }
+        if (contentBlocks.isEmpty()) {
+            throw new IllegalArgumentException("contentBlocks must not be empty");
+        }
         return new McpToolResult(TYPE_MULTI_CONTENT, serializeContentList(contentBlocks), null);
     }
 
@@ -134,20 +145,11 @@ public class McpToolResult {
     }
 
     /**
-     * Serializes a list of Content blocks individually to ensure type discriminators
-     * are included in each element.
+     * Serializes a list of Content blocks using the MCP SDK's JSON mapper.
      */
     private static String serializeContentList(List<? extends Content> contentBlocks) {
         try {
-            io.modelcontextprotocol.json.McpJsonMapper mapper =
-                    io.modelcontextprotocol.json.McpJsonDefaults.getMapper();
-            StringBuilder sb = new StringBuilder("[");
-            for (int i = 0; i < contentBlocks.size(); i++) {
-                if (i > 0) sb.append(",");
-                sb.append(mapper.writeValueAsString(contentBlocks.get(i)));
-            }
-            sb.append("]");
-            return sb.toString();
+            return io.modelcontextprotocol.json.McpJsonDefaults.getMapper().writeValueAsString(contentBlocks);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to serialize MCP content list", e);
         }
