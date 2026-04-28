@@ -8,15 +8,25 @@ jobs:
       os: windows
 
     steps:
-    - task: JavaToolInstaller@0 # This step is necessary as Linux image has Java 11 as default
+    - task: JavaToolInstaller@0
       inputs:
         versionSpec: '11'
         jdkArchitectureOption: 'x64'
         jdkSourceOption: 'PreInstalled'
-      displayName: 'Setup Java for Linux'
+      displayName: 'Setup Java 11'
     - pwsh: |
         Write-Host "Java_HOME: $JAVA_HOME"
         Get-Command mvn
       displayName: 'Check Maven is installed'
     - pwsh: '& .\build.ps1'
-      displayName: 'Build project with java core library'
+      displayName: 'Build Java 11 libraries'
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '17'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Setup Java 17'
+    - pwsh: |
+        cd azure-functions-java-mcp
+        mvn clean install "-Dgpg.skip=true" -B
+      displayName: 'Build Java 17 libraries'

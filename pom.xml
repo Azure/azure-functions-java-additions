@@ -13,4 +13,17 @@
         <module>azure-functions-java-sdktypes</module>
         <module>azure-functions-java-opentelemetry</module>
     </modules>
+
+    <profiles>
+        <!-- azure-functions-java-mcp requires Java 17+ (MCP SDK uses sealed interfaces/records) -->
+        <profile>
+            <id>java17-modules</id>
+            <activation>
+                <jdk>[17,)</jdk>
+            </activation>
+            <modules>
+                <module>azure-functions-java-mcp</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

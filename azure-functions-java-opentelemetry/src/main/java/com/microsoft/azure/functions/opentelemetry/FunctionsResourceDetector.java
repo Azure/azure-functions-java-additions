@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for
+ * license information.
+ */
+
 package com.microsoft.azure.functions.opentelemetry;
 
 import io.opentelemetry.api.common.Attributes;
@@ -110,7 +116,7 @@ public final class FunctionsResourceDetector {
         // Construct fully-qualified ARM resource ID when all components are available
         final String subscriptionId = extractSubscriptionId(ownerName);
         if (subscriptionId != null && resourceGroup != null && siteName != null) {
-            String resourceId = String.format(
+            final String resourceId = String.format(
                     "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Web/sites/%s",
                     subscriptionId, resourceGroup, siteName);
             attrBuilder.put(CLOUD_RESOURCE_ID, resourceId);
