@@ -178,6 +178,42 @@ class McpToolResultMiddlewareTest {
     }
 
     // ========================================================================
+    // Regression: list elements must include the polymorphic "type" discriminator
+    // so the host extension can deserialize as IEnumerable<ContentBlock>.
+    // ========================================================================
+
+    @Test
+    void mcpToolResult_fromContentList_each_element_has_type_discriminator() {
+        McpToolResult result = McpToolResult.fromContentList(Arrays.asList(
+                new TextContent("hello"),
+                new ImageContent(null, "base64data", "image/png")
+        ));
+
+        // Inner content is a JSON array. Each element must carry "type".
+        com.google.gson.JsonArray array = com.google.gson.JsonParser
+                .parseString(result.getContent())
+                .getAsJsonArray();
+        assertEquals(2, array.size());
+
+        JsonObject first = array.get(0).getAsJsonObject();
+        assertTrue(first.has("type"), "first element missing \"type\" discriminator: " + first);
+        assertEquals("text", first.get("type").getAsString());
+
+        JsonObject second = array.get(1).getAsJsonObject();
+        assertTrue(second.has("type"), "second element missing \"type\" discriminator: " + second);
+        assertEquals("image", second.get("type").getAsString());
+    }
+
+    @Test
+    void mcpToolResult_fromContent_single_image_has_type_discriminator() {
+        McpToolResult result = McpToolResult.fromContent(new ImageContent(null, "x", "image/png"));
+
+        JsonObject obj = com.google.gson.JsonParser.parseString(result.getContent()).getAsJsonObject();
+        assertTrue(obj.has("type"), "single content missing \"type\" discriminator: " + obj);
+        assertEquals("image", obj.get("type").getAsString());
+    }
+
+    // ========================================================================
     // Helper types
     // ========================================================================
 

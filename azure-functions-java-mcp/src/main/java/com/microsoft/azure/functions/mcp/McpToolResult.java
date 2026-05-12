@@ -146,10 +146,29 @@ public class McpToolResult {
 
     /**
      * Serializes a list of Content blocks using the MCP SDK's JSON mapper.
+     *
+     * <p>Uses an explicit {@code List<Content>} collection type so that Jackson emits the
+     * polymorphic {@code "type"} discriminator on each element (e.g. {@code "type":"text"},
+     * {@code "type":"image"}). Without this, Jackson sees each list element via its concrete
+     * runtime type and skips the {@code @JsonTypeInfo} property declared on the {@code Content}
+     * interface, producing JSON like {@code [{"text":"hello"},{"data":"...","mimeType":"..."}]}
+     * which fails polymorphic deserialization on the host side.</p>
      */
     private static String serializeContentList(List<? extends Content> contentBlocks) {
         try {
-            return io.modelcontextprotocol.json.McpJsonDefaults.getMapper().writeValueAsString(contentBlocks);
+            io.modelcontextprotocol.json.McpJsonMapper sdkMapper =
+                    io.modelcontextprotocol.json.McpJsonDefaults.getMapper();
+            // The MCP SDK ships a Jackson-backed mapper by default; reach the underlying
+            // ObjectMapper so we can declare the parameterized element type explicitly.
+            if (sdkMapper instanceof io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper =
+                        ((io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper) sdkMapper).getObjectMapper();
+                return mapper.writerFor(
+                        mapper.getTypeFactory().constructCollectionType(List.class, Content.class)
+                ).writeValueAsString(contentBlocks);
+            }
+            // Fallback for non-Jackson SDK mappers — content may lack type discriminator.
+            return sdkMapper.writeValueAsString(contentBlocks);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to serialize MCP content list", e);
         }
