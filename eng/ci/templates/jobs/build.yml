@@ -8,6 +8,11 @@ jobs:
       os: windows
 
     steps:
+    - task: npmAuthenticate@0
+      inputs:
+        workingFile: '$(Build.SourcesDirectory)\.npmrc'
+      displayName: 'Authenticate to CFS npm feed'
+
     - task: JavaToolInstaller@0
       inputs:
         versionSpec: '11'
@@ -19,6 +24,8 @@ jobs:
         Get-Command mvn
       displayName: 'Check Maven is installed'
     - pwsh: '& .\build.ps1'
+      env:
+        NPM_CONFIG_USERCONFIG: '$(Build.SourcesDirectory)\.npmrc'
       displayName: 'Build Java 11 libraries'
     - task: JavaToolInstaller@0
       inputs:
