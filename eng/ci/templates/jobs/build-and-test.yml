@@ -1,19 +1,18 @@
 parameters:
+  - name: jobName
+    type: string
+    default: Build
+  - name: displayName
+    type: string
+    default: Build java core library
   - name: runEndToEndTests
     type: boolean
-    default: true
-    displayName: "Run end-to-end tests"
+    default: false
+    displayName: Run end-to-end tests
 
 jobs:
-  - job: "Build_And_Test_Java_Library_Windows"
-
-    pool:
-      name: 1es-pool-azfunc
-      image: 1es-windows-2022 
-      os: windows
-
-    variables:
-      ApplicationInsightAgentVersion: 3.5.2
+  - job: ${{ parameters.jobName }}
+    displayName: ${{ parameters.displayName }}
 
     steps:
     - task: npmAuthenticate@0
@@ -34,6 +33,13 @@ jobs:
       inputs:
         artifactsFeeds: upstream-public
 
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '11'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Setup Java 11'
+
     - pwsh: |
         Write-Host "Java_HOME: $env:JAVA_HOME"
         Get-Command mvn
@@ -41,18 +47,39 @@ jobs:
 
     - task: UseDotNet@2
       displayName: 'Install .NET 6'
+      condition: eq(${{ parameters.runEndToEndTests }}, true)
       inputs:
         version: 6.0.x
-        
+
     - pwsh: '& .\build.ps1'
       env:
         NPM_CONFIG_USERCONFIG: '$(Build.SourcesDirectory)\.npmrc'
-      displayName: 'Build project with java core library'
+      displayName: 'Build Java 11 libraries'
+
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '17'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Setup Java 17'
 
     - pwsh: |
-        $currDir =  Get-Location
-        $Env:Path = $Env:Path+";$currDir\Azure.Functions.Cli"
-        ls $currDir\Azure.Functions.Cli
+        cd azure-functions-java-mcp
+        mvn clean install "-Dgpg.skip=true" -B
+      displayName: 'Build Java 17 libraries'
+
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '8'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Setup Java 8 for E2E'
+      condition: eq(${{ parameters.runEndToEndTests }}, true)
+
+    - pwsh: |
+        $currDir = Get-Location
+        $Env:Path = $Env:Path + ";$currDir\Azure.Functions.Cli"
+        Get-ChildItem $currDir\Azure.Functions.Cli
         func --version
         cd ./azure-functions-java-worker/emulatedtests
         mvn clean package `-Dmaven`.javadoc`.skip=true `-Dmaven`.test`.skip `-Dorg`.slf4j`.simpleLogger`.log`.org`.apache`.maven`.cli`.transfer`.Slf4jMavenTransferListener=warn `-B
@@ -96,4 +123,3 @@ jobs:
         JAVA_HOME: $(JAVA_HOME_8_X64)
       displayName: 'Build & Run tests for java 8'
       condition: eq(${{ parameters.runEndToEndTests }}, true)
-
