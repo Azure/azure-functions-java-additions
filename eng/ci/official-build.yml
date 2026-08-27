@@ -57,6 +57,8 @@ extends:
     - stage: BuildAndTest
 
       jobs:
-      - template: /eng/ci/templates/official/jobs/build-and-test.yml@self
+      - template: /eng/ci/templates/jobs/build-and-test.yml@self
         parameters:
+          jobName: Build_And_Test_Java_Library_Windows
+          displayName: Build and test Java library
           runEndToEndTests: ${{ and(ne(variables['Build.Reason'], 'Schedule'), parameters.runEndToEndTests) }}
