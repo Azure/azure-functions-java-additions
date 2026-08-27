@@ -6,18 +6,35 @@
 package com.microsoft.azure.functions.spi.inject;
 
 /**
- * The instance factory used by DI framework to initialize function instance.
- *
- * @since 1.0.0
+ * The instance factory used by Azure Functions Java Worker to initialize customer function instances.
+ * Implementations can optionally manage resources that require explicit cleanup.
  */
-public interface FunctionInstanceInjector {
+public interface FunctionInstanceInjector extends AutoCloseable {
+
     /**
-     * This method is used by DI framework to initialize the function instance. This method takes in the customer class and returns
-     * an instance create by the DI framework, later customer functions will be invoked on this instance.
-     * @param functionClass the class that contains customer functions
-     * @param <T> customer functions class type
-     * @return the instance that will be invoked on by azure functions java worker
-     * @throws Exception any exception that is thrown by the DI framework during instance creation
+     * This method is called by the Azure Functions Java Worker to create an instance of the class
+     * containing customer-defined Azure Functions. Functions defined in the provided class will be invoked
+     * on the returned instance.
+     *
+     * @param functionClass The class containing customer-defined functions.
+     * @param <T>           The type of the customer functions class.
+     * @return An instance created by the injector to invoke functions on.
+     * @throws Exception if instance creation fails for any reason.
      */
     <T> T getInstance(Class<T> functionClass) throws Exception;
+
+    /**
+     * Closes this injector and releases any resources managed by it.
+     * <p>
+     * This method is called automatically by the Azure Functions Java Worker at worker shutdown.
+     * Override this method if the injector manages resources (e.g., database connections, thread pools)
+     * that need explicit closure to avoid resource leaks.
+     *
+     * <p>Default implementation is a no-op, preserving backward compatibility.</p>
+     *
+     * @throws Exception if cleanup fails for any reason.
+     */
+    default void close() throws Exception {
+        // No-op default implementation.
+    }
 }
