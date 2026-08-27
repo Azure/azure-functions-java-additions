@@ -10,149 +10,119 @@ import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkHydrationException;
 
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
- * Base class for Blob hydrators that handles common logic for connection string
- * vs managed identity authentication. Subclasses override buildWithConnectionString
- * and buildWithManagedIdentity to configure their specific builder types.
- * 
- * This class implements the Template Method pattern, where the overall algorithm
- * structure is defined in createInstance(), but specific steps are delegated to
- * subclass implementations.
+ * Base class for Blob hydrators. Owns BlobServiceClient caching and auth
+ * detection (connection string vs managed identity). Subclasses override
+ * {@link #createInstance} to derive their specific client type
+ * (BlobClient, BlobContainerClient) from the cached service client.
+ *
+ * <p>The BlobServiceClient holds the HTTP pipeline (HttpClient, retry policies,
+ * auth provider). Caching it per connection means all containers and blobs
+ * under the same storage account share a single pipeline. Deriving
+ * BlobContainerClient or BlobClient from it is free — just URL construction.</p>
  */
 public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTypeHydrator<T> {
     protected static final Logger LOGGER = Logger.getLogger(BaseBlobHydrator.class.getName());
 
     /**
-     * Implements the SdkTypeHydrator interface method. Extracts the connection environment variable
-     * from metadata and delegates to the template method.
-     * 
-     * @param metaData the metadata containing configuration details
-     * @return the built client instance
-     * @throws Exception if client creation fails
+     * Cache of BlobServiceClient objects, keyed by the connection environment
+     * variable name (e.g. "AzureWebJobsStorage"). Uses ConcurrentHashMap for
+     * lock-free reads under high throughput. Typically a function app has 1-3
+     * storage connections, so unbounded growth is not a concern.
      */
-    @Override
-    public Object createInstance(T metaData) throws Exception {
-        LOGGER.info("Starting " + this.getClass().getSimpleName() + ".createInstance()");
-        return createInstance(metaData, metaData.getConnectionEnvVar());
-    }
+    private static final Map<String, Object> SERVICE_CLIENT_CACHE = new ConcurrentHashMap<>();
 
     /**
-     * Main orchestration method that determines authentication type and delegates to subclass methods.
-     * This is the template method that defines the algorithm structure.
-     * 
-     * @param metaData the metadata containing configuration details
-     * @param envVar the environment variable name or prefix for authentication
-     * @return the built client instance
-     * @throws Exception if client creation fails
+     * Gets or creates a cached BlobServiceClient for the given connection.
+     * Subclasses call this and derive container/blob clients from the result.
+     *
+     * @param metaData the metadata containing connection info
+     * @return a BlobServiceClient instance (cached per connection env var)
+     * @throws Exception if service client creation fails
      */
-    private Object createInstance(T metaData, String envVar) throws Exception {
-        LOGGER.info("Starting hydration with environment variable: " + envVar);
+    protected Object getOrCreateServiceClient(BlobMetaData metaData) throws Exception {
+        final String cacheKey = metaData.getConnectionEnvVar();
+        Object cached = SERVICE_CLIENT_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
 
+        LOGGER.info("Service client cache miss for: " + cacheKey + ". Building new BlobServiceClient.");
+        final Object serviceClient = buildServiceClient(cacheKey);
+        Object existing = SERVICE_CLIENT_CACHE.putIfAbsent(cacheKey, serviceClient);
+        return existing != null ? existing : serviceClient;
+    }
+
+    // ---- Service client construction (private) ----
+
+    private Object buildServiceClient(String envVar) throws Exception {
         final String maybeConnString = System.getenv(envVar);
-        
-        if (maybeConnString != null && isConnectionString(maybeConnString)) {
-            LOGGER.info("Detected connection string usage from environment variable: " + envVar);
-            return buildWithConnectionString(metaData, maybeConnString);
-        } else {
-            LOGGER.info("Detected Managed Identity usage. Prefix: " + envVar);
+        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
 
+        if (maybeConnString != null && isConnectionString(maybeConnString)) {
+            return buildServiceClientWithConnectionString(cl, maybeConnString);
+        } else {
             final String accountName = System.getenv(envVar + "__accountName");
             final String serviceUri = System.getenv(envVar + "__serviceUri");
             final String blobServiceUri = System.getenv(envVar + "__blobServiceUri");
             final String clientId = System.getenv(envVar + "__clientId");
 
             final String endpoint = resolveEndpoint(accountName, serviceUri, blobServiceUri);
-            final Object credential = buildManagedIdentityCredential(clientId);
-
-            return buildWithManagedIdentity(metaData, endpoint, credential);
+            final Object credential = buildManagedIdentityCredential(cl, clientId);
+            return buildServiceClientWithManagedIdentity(cl, endpoint, credential);
         }
     }
 
-    /**
-     * Subclasses override to build their specific client using connection string authentication.
-     * 
-     * @param metaData the metadata containing configuration details
-     * @param connectionString the connection string from environment variable
-     * @return the built client instance
-     * @throws Exception if client creation fails
-     */
-    protected abstract Object buildWithConnectionString(T metaData, String connectionString) throws Exception;
+    private Object buildServiceClientWithConnectionString(ClassLoader cl, String connStr) throws Exception {
+        final Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobServiceClientBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
+        builderClass.getMethod("connectionString", String.class).invoke(builder, connStr);
+        return builderClass.getMethod("buildClient").invoke(builder);
+    }
 
-    /**
-     * Subclasses override to build their specific client using managed identity authentication.
-     * 
-     * @param metaData the metadata containing configuration details
-     * @param endpoint the resolved endpoint URL
-     * @param credential the DefaultAzureCredential instance
-     * @return the built client instance
-     * @throws Exception if client creation fails
-     */
-    protected abstract Object buildWithManagedIdentity(T metaData, String endpoint, Object credential) throws Exception;
+    private Object buildServiceClientWithManagedIdentity(ClassLoader cl, String endpoint, Object credential) throws Exception {
+        final Class<?> builderClass = cl.loadClass("com.azure.storage.blob.BlobServiceClientBuilder");
+        final Object builder = builderClass.getDeclaredConstructor().newInstance();
+        final Class<?> tokenCredClass = cl.loadClass("com.azure.core.credential.TokenCredential");
+        builderClass.getMethod("credential", tokenCredClass).invoke(builder, credential);
+        builderClass.getMethod("endpoint", String.class).invoke(builder, endpoint);
+        return builderClass.getMethod("buildClient").invoke(builder);
+    }
 
-    /**
-     * Decide if configValue is likely a connection string by checking for well-known keywords.
-     * 
-     * @param val the value to check
-     * @return true if the value appears to be a connection string
-     */
-    protected boolean isConnectionString(String val) {
+    // ---- Auth utilities ----
+
+    private boolean isConnectionString(String val) {
         return val.contains("AccountKey=")
                 || val.contains("DefaultEndpointsProtocol=")
                 || val.contains("UseDevelopmentStorage=true");
     }
 
-    /**
-     * Resolves the endpoint for managed identity from environment variables, or throws if none found.
-     * Checks accountName, blobServiceUri, and serviceUri in order.
-     * 
-     * @param accountName the storage account name
-     * @param serviceUri the generic service URI
-     * @param blobServiceUri the blob-specific service URI
-     * @return the resolved endpoint URL
-     * @throws SdkHydrationException if no endpoint can be resolved
-     */
-    protected String resolveEndpoint(String accountName, String serviceUri, String blobServiceUri) {
+    private String resolveEndpoint(String accountName, String serviceUri, String blobServiceUri) {
         if (accountName != null && !accountName.isEmpty()) {
-            final String ep = String.format("https://%s.blob.core.windows.net", accountName);
-            LOGGER.info("Resolved endpoint from accountName: " + ep);
-            return ep;
+            return String.format("https://%s.blob.core.windows.net", accountName);
         }
         if (blobServiceUri != null && !blobServiceUri.isEmpty()) {
-            LOGGER.info("Resolved endpoint from blobServiceUri: " + blobServiceUri);
             return blobServiceUri;
         }
         if (serviceUri != null && !serviceUri.isEmpty()) {
-            LOGGER.info("Resolved endpoint from serviceUri: " + serviceUri);
             return serviceUri;
         }
-        throw new SdkHydrationException("Missing accountName, blobServiceUri, or serviceUri for managed identity scenario.");
+        throw new SdkHydrationException(
+                "Missing accountName, blobServiceUri, or serviceUri for managed identity scenario.");
     }
 
-    /**
-     * Build the DefaultAzureCredential reflectively, including user-assigned clientId if present.
-     * 
-     * @param clientId optional client ID for user-assigned managed identity
-     * @return the DefaultAzureCredential instance
-     * @throws Exception if credential creation fails
-     */
-    protected Object buildManagedIdentityCredential(String clientId) throws Exception {
-        LOGGER.info("Building DefaultAzureCredential for managed identity.");
-        
-        final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+    private Object buildManagedIdentityCredential(ClassLoader cl, String clientId) throws Exception {
         final Class<?> builderClass = cl.loadClass("com.azure.identity.DefaultAzureCredentialBuilder");
         final Object builder = builderClass.getDeclaredConstructor().newInstance();
 
         if (clientId != null && !clientId.isEmpty()) {
-            LOGGER.info("Using user-assigned managed identity: " + clientId);
-            final Method micidMethod = builderClass.getMethod("managedIdentityClientId", String.class);
-            micidMethod.invoke(builder, clientId);
-        } else {
-            LOGGER.info("Using system-assigned managed identity (no clientId).");
+            builderClass.getMethod("managedIdentityClientId", String.class).invoke(builder, clientId);
         }
 
-        final Method buildMethod = builderClass.getMethod("build");
-        return buildMethod.invoke(builder);
+        return builderClass.getMethod("build").invoke(builder);
     }
 }
