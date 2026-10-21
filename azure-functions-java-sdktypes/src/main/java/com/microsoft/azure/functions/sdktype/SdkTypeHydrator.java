@@ -6,6 +6,8 @@
 
 package com.microsoft.azure.functions.sdktype;
 
+import com.microsoft.azure.functions.internal.spi.sdk.SdkInvocationContext;
+
 /**
  * A hydrator that builds the final client instance
  * from a given SdkTypeMetaData object.
@@ -21,4 +23,16 @@ public interface SdkTypeHydrator<M extends SdkTypeMetaData> {
      * @throws Exception if client creation fails
      */
     Object createInstance(M metaData) throws Exception;
+
+    /**
+     * Builds an invocation-local object. Existing hydrators retain their behavior.
+     *
+     * @param metaData fresh metadata owned by this invocation
+     * @param context invocation data and host endpoint
+     * @return hydrated object
+     * @throws Exception if hydration fails
+     */
+    default Object createInstance(M metaData, SdkInvocationContext context) throws Exception {
+        return createInstance(metaData);
+    }
 }

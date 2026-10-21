@@ -11,6 +11,7 @@
 		<module>azure-functions-java-core-library</module>
 		<module>azure-functions-java-spi</module>
         <module>azure-functions-java-sdktypes</module>
+        <module>azure-functions-java-servicebus</module>
         <module>azure-functions-java-opentelemetry</module>
     </modules>
 
