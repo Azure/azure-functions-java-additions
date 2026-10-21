@@ -19,6 +19,16 @@
 
 # Java SDK Types for Azure Functions
 
+Service Bus message types and companion actions are also recognized. Their
+runtime implementation is supplied by the optional
+[`azure-functions-java-servicebus`](../azure-functions-java-servicebus/README.md)
+artifact through `ServiceLoader`. Single messages, arrays and typed lists retain
+their reflected `Parameter` while sharing the base message FQCN for registration.
+The worker must create fresh metadata with `registry.createMetaData(...)` for
+every invocation and use `buildInstance(SdkInvocationContext)` for these types.
+Only legacy client types such as Blob clients are cacheable. The context carries
+raw host payloads without decoding and closes invocation-owned state on exit.
+
 This library provides a **two-phase** approach to binding advanced Azure SDK clients in the Java Functions worker:
 
 1. **Build-Time Analysis**: A minimal metadata object (`SdkTypeMetaData`) is created for each recognized SDK parameter (e.g., `BlobClient`, `BlobContainerClient`, etc.).
