@@ -76,6 +76,8 @@ class ServiceBusBindingTest {
             envelope(hex(prefix + "005376c0ff0141"))));
         assertThrows(IllegalArgumentException.class, () -> ServiceBusBindingProvider.decode(
             envelope(hex(prefix + "005377c1ff024141"))));
+        assertThrows(IllegalArgumentException.class, () -> ServiceBusBindingProvider.decode(
+            envelope(hex(prefix + "005377f0000000057fffffff43"))));
         assertNotNull(ServiceBusBindingProvider.decode(envelope(hex(prefix + "005376c0020141")))
             .getRawAmqpMessage());
         assertNotNull(ServiceBusBindingProvider.decode(envelope(hex(prefix + "005377c103024141")))
