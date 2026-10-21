@@ -103,17 +103,24 @@ public interface HttpResponseMessage {
         Builder body(Object body);
 
         /**
-         * Streams the body of the HTTP response from an {@link InputStream}. The
-         * stream is read by the Functions runtime and copied to the response body
-         * without buffering the entire payload in memory; suitable for large
-         * payloads or content of unknown length.
+         * Sets an {@link InputStream} as the response body for deferred streaming.
+         * This method delegates to {@link #body(Object)} without reading or
+         * closing the stream. A {@code null} stream delegates to {@code body(null)}.
          *
-         * <p>The stream is closed by the runtime after the response has been
-         * sent. Implementations should not assume the stream supports
-         * {@code mark}/{@code reset}.</p>
+         * <p>Streaming requires a compatible Functions Java worker and host with
+         * HTTP response streaming enabled. This API alone does not enable
+         * streaming, and older runtimes do not provide a streaming fallback.</p>
          *
-         * <p>This is a typed alias for {@link #body(Object)} that signals to the
-         * runtime to use the streaming write path.</p>
+         * <p>Keep the stream open after the function returns. The runtime closes
+         * a stream it consumes, including when copying fails. Do not reuse the
+         * stream for another response. The stream need not support
+         * {@code mark}/{@code reset}. If the body is replaced or the response is
+         * never handed to the runtime, the caller remains responsible for closing
+         * the stream.</p>
+         *
+         * <p>Errors encountered while streaming may occur after response headers
+         * have been sent. In that case the response may be incomplete and its
+         * status cannot be changed to report the error.</p>
          *
          * @param stream the input stream to stream as the response body
          * @return this builder
@@ -124,18 +131,26 @@ public interface HttpResponseMessage {
         }
 
         /**
-         * Streams the body of the HTTP response via a writer callback. The
-         * Functions runtime invokes the callback with the response
-         * {@link OutputStream} once response headers have been sent; the
-         * function writes its content to the stream and returns. The runtime
-         * flushes and closes the stream when the callback returns.
+         * Sets a writer callback as the response body for deferred streaming.
+         * This method delegates to {@link #body(Object)} without invoking the
+         * callback. A {@code null} writer delegates to {@code body(null)}.
          *
-         * <p>Use this overload for server-sent events, chunked responses, or
-         * any payload that is more naturally produced incrementally than
-         * materialized as a single {@code byte[]} or {@code InputStream}.</p>
+         * <p>The runtime invokes the callback when it consumes the response body.
+         * Write synchronously to the supplied {@link OutputStream} and return
+         * when finished. Flush it when incremental delivery is needed. Do not
+         * close or retain it, or write to it after returning. The runtime owns
+         * and closes the output stream, including when the callback fails.
+         * The callback must manage any resources it opens.</p>
          *
-         * <p>This is a typed alias for {@link #body(Object)} that signals to the
-         * runtime to use the streaming write path.</p>
+         * <p>Streaming requires a compatible Functions Java worker and host with
+         * HTTP response streaming enabled. This API alone does not enable
+         * streaming, and older runtimes do not provide a streaming fallback.
+         * Delivery timing also depends on host and intermediary buffering.</p>
+         *
+         * <p>The callback may throw {@link IOException}. An error after headers
+         * have been sent can leave an incomplete response; it cannot change the
+         * response status. Treat the callback as single-use and do not assume it
+         * runs on the function invocation thread.</p>
          *
          * @param writer callback invoked with the response output stream
          * @return this builder

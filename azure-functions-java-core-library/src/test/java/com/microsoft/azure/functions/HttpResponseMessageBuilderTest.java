@@ -15,6 +15,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,24 +58,25 @@ public class HttpResponseMessageBuilderTest {
 
     @Test
     public void ioConsumerPropagatesIOException() {
+        IOException failure = new IOException("disk full");
         IOConsumer<OutputStream> writer = os -> {
-            throw new IOException("disk full");
+            throw failure;
         };
 
         try {
             writer.accept(new ByteArrayOutputStream());
             fail("Expected IOException");
         } catch (IOException ex) {
-            assertEquals("disk full", ex.getMessage());
+            assertSame(failure, ex);
         }
     }
 
     @Test
     public void ioConsumerExecutesNormally() throws Exception {
-        IOConsumer<OutputStream> writer = os -> os.write("hi".getBytes("UTF-8"));
+        IOConsumer<OutputStream> writer = os -> os.write("hi".getBytes(StandardCharsets.UTF_8));
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         writer.accept(sink);
-        assertEquals("hi", new String(sink.toByteArray(), "UTF-8"));
+        assertEquals("hi", new String(sink.toByteArray(), StandardCharsets.UTF_8));
     }
 
     @Test
@@ -88,8 +90,105 @@ public class HttpResponseMessageBuilderTest {
         assertEquals("1", builder.headers.get("X-Test"));
     }
 
-    /** Minimal in-memory Builder that records the last body passed in. */
-    private static final class RecordingBuilder implements Builder {
+    @Test
+    public void buildingResponseDoesNotReadOrCloseInputStream() {
+        InputStream stream = new InputStream() {
+            @Override
+            public int read() {
+                throw new AssertionError("Builder must not read the stream");
+            }
+
+            @Override
+            public void close() {
+                throw new AssertionError("Builder must not close the stream");
+            }
+        };
+
+        HttpResponseMessage response = new RecordingBuilder().bodyStream(stream).build();
+
+        assertSame(stream, response.getBody());
+    }
+
+    @Test
+    public void buildingResponseDoesNotInvokeCallback() {
+        IOConsumer<OutputStream> writer = output -> {
+            throw new AssertionError("Builder must not invoke the callback");
+        };
+
+        HttpResponseMessage response = new RecordingBuilder().bodyStream(writer).build();
+
+        assertSame(writer, response.getBody());
+    }
+
+    @Test
+    public void typedNullsDelegateToBody() {
+        RecordingBuilder builder = new RecordingBuilder();
+        builder.body("previous");
+
+        assertSame(builder, builder.bodyStream((InputStream) null));
+        assertSame(null, builder.build().getBody());
+
+        builder.body("previous");
+
+        assertSame(builder, builder.bodyStream((IOConsumer<OutputStream>) null));
+        assertSame(null, builder.build().getBody());
+    }
+
+    @Test
+    public void bodyAndStreamingBodiesReplaceEachOther() {
+        RecordingBuilder builder = new RecordingBuilder();
+        InputStream stream = new ByteArrayInputStream(new byte[0]);
+        IOConsumer<OutputStream> writer = output -> {
+            throw new AssertionError("Replacing a callback must not invoke it");
+        };
+
+        builder.body("buffered").bodyStream(stream);
+        assertSame(stream, builder.build().getBody());
+        builder.bodyStream(writer);
+        assertSame(writer, builder.build().getBody());
+        builder.body("replacement");
+        assertEquals("replacement", builder.build().getBody());
+    }
+
+    @Test
+    public void overloadsPreserveDelegatedBuilderReturnValue() {
+        Builder delegated = new RecordingBuilder();
+        Builder builder = new RecordingBuilder() {
+            @Override
+            public Builder body(Object body) {
+                return delegated;
+            }
+        };
+
+        assertSame(delegated, builder.bodyStream(new ByteArrayInputStream(new byte[0])));
+        assertSame(delegated, builder.bodyStream(output -> output.write(42)));
+    }
+
+    @Test
+    public void overloadsPropagateDelegationFailures() {
+        IllegalStateException failure = new IllegalStateException("builder is sealed");
+        Builder builder = new RecordingBuilder() {
+            @Override
+            public Builder body(Object body) {
+                throw failure;
+            }
+        };
+
+        try {
+            builder.bodyStream(new ByteArrayInputStream(new byte[0]));
+            fail("Expected builder failure");
+        } catch (IllegalStateException ex) {
+            assertSame(failure, ex);
+        }
+        try {
+            builder.bodyStream(output -> output.write(42));
+            fail("Expected builder failure");
+        } catch (IllegalStateException ex) {
+            assertSame(failure, ex);
+        }
+    }
+
+    private static class RecordingBuilder implements Builder {
         Object lastBody;
         HttpStatusType lastStatus;
         Map<String, String> headers = new HashMap<>();
@@ -114,8 +213,25 @@ public class HttpResponseMessageBuilderTest {
 
         @Override
         public HttpResponseMessage build() {
-            // Tests inspect builder state directly; no need to materialize a response.
-            return null;
+            HttpStatusType status = lastStatus;
+            Map<String, String> responseHeaders = new HashMap<>(headers);
+            Object body = lastBody;
+            return new HttpResponseMessage() {
+                @Override
+                public HttpStatusType getStatus() {
+                    return status;
+                }
+
+                @Override
+                public String getHeader(String key) {
+                    return responseHeaders.get(key);
+                }
+
+                @Override
+                public Object getBody() {
+                    return body;
+                }
+            };
         }
     }
 }

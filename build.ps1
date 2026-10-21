@@ -6,6 +6,15 @@ function StopOnFailedExecution {
   }
 }
 
+$npmUserConfig = $env:NPM_CONFIG_USERCONFIG
+if ([string]::IsNullOrWhiteSpace($npmUserConfig)) {
+  $npmUserConfig = Join-Path $PSScriptRoot '.npmrc'
+}
+if (-not (Test-Path -LiteralPath $npmUserConfig -PathType Leaf)) {
+  throw "npm user config does not exist: $npmUserConfig"
+}
+$env:NPM_CONFIG_USERCONFIG = (Resolve-Path -LiteralPath $npmUserConfig).Path
+
 # Clone and install function maven archetype      
 git clone https://github.com/Microsoft/azure-maven-archetypes.git -b develop
 Push-Location -Path "./azure-maven-archetypes/azure-functions-archetype" -StackName libraryDir
@@ -92,11 +101,24 @@ Remove-Item -Recurse -Force $FUNC_CLI_DIRECTORY -ErrorAction Ignore
 New-Item -ItemType Directory -Path $FUNC_CLI_DIRECTORY -ErrorAction Ignore
 
 # 2. Locate the global prefix and module root that npm just used
-$globalNode   = (npm root   -g | Out-String).Trim()         # e.g. /usr/local/lib/node_modules
-$moduleRoot   = Join-Path $globalNode 'azure-functions-core-tools'
+$npmRootArguments = @('root', '--global')
+$globalNode = (npm @npmRootArguments | Out-String).Trim()
+StopOnFailedExecution
+$moduleRoot = Join-Path $globalNode 'azure-functions-core-tools'
 
 # 3. npm install → temp folder
-npm install -g azure-functions-core-tools@$FUNC_RUNTIME_VERSION --unsafe-perm true --foreground-scripts --loglevel verbose
+$npmInstallArguments = @(
+  'install'
+  '--global'
+  "azure-functions-core-tools@$FUNC_RUNTIME_VERSION"
+  '--unsafe-perm'
+  'true'
+  '--foreground-scripts'
+  '--loglevel'
+  'verbose'
+)
+npm @npmInstallArguments
+StopOnFailedExecution
 
 # 4. Copy CLI payload into the layout required tests
 Copy-Item "$moduleRoot\bin\*" $FUNC_CLI_DIRECTORY -Recurse -Force
@@ -135,9 +157,6 @@ Pop-Location -StackName "libraryDir"
 
 $ApplicationInsightsAgentVersion = '3.5.2'
 $ApplicationInsightsAgentFilename = "applicationinsights-agent-${ApplicationInsightsAgentVersion}.jar"
-$ApplicationInsightsAgentUrl = "https://repo1.maven.org/maven2/com/microsoft/azure/applicationinsights-agent/${ApplicationInsightsAgentVersion}/${ApplicationInsightsAgentFilename}"
-
-# Download application insights agent from maven central
 $ApplicationInsightsAgentFile = "$currDir/$ApplicationInsightsAgentFilename"
 
 # local testing cleanup
@@ -157,14 +176,17 @@ if (Test-Path -Path $oldExtract) {
     Remove-Item -Path $oldExtract -Recurse
 }
 
-echo "Start downloading '$ApplicationInsightsAgentUrl' to '$currDir'"
-try {
-    Invoke-WebRequest -Uri $ApplicationInsightsAgentUrl -OutFile $ApplicationInsightsAgentFile
-} catch {
-    echo "An error occurred. Download fails" $ApplicationInsightsAgentFile
-    echo "Exiting"
-    exit 1
-}
+# CI installs authenticated user settings before invoking this script; local restores use the CFS
+# repository declared in pom.xml.
+Write-Host "Restoring '$ApplicationInsightsAgentFilename' through Maven"
+$mavenArguments = @(
+  '--batch-mode'
+  'org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy'
+  "-Dartifact=com.microsoft.azure:applicationinsights-agent:${ApplicationInsightsAgentVersion}:jar"
+  "-DoutputDirectory=$currDir"
+)
+& mvn @mavenArguments
+StopOnFailedExecution
 
 if (-not(Test-Path -Path $ApplicationInsightsAgentFile)) {
     echo "$ApplicationInsightsAgentFile do not exist."

@@ -14,6 +14,33 @@
         <module>azure-functions-java-opentelemetry</module>
     </modules>
 
+    <!-- Package sources must be routed through an Azure Artifacts feed (CFS). -->
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://pkgs.dev.azure.com/azfunc/public/_packaging/upstream-public/maven/v1</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>central</id>
+            <url>https://pkgs.dev.azure.com/azfunc/public/_packaging/upstream-public/maven/v1</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
     <profiles>
         <!-- azure-functions-java-mcp requires Java 17+ (MCP SDK uses sealed interfaces/records) -->
         <profile>
