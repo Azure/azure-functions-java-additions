@@ -1,1 +1,1 @@
-com.microsoft.azure.functions.servicebus.ServiceBusBindingProvider
+com.microsoft.azure.functions.servicebus.ServiceBusHostProvider

@@ -1,111 +1,72 @@
 # Service Bus SDK bindings for Java Functions
 
-This optional artifact binds `com.azure.messaging.servicebus.ServiceBusReceivedMessage`,
-`ServiceBusReceivedMessage[]`, and `List<ServiceBusReceivedMessage>` to Service Bus
-triggers. `ServiceBusMessageActions` settles the host-held message lock through the
-Functions host endpoint. It does not open a Service Bus receiver or establish a
-second broker connection.
+This optional artifact lets a function take `ServiceBusReceivedMessage` (or an array or `List` of
+it) from a Service Bus trigger, and settle messages with `ServiceBusMessageActions`.
+Settlement calls the `Settlement` gRPC service of the Functions host, which still holds the message
+lock. It does not open a Service Bus receiver or a second broker connection.
 
-## Integration dependencies
+This mirrors the Python and Node.js bindings. The actions object is one per process, is injected by
+type, and uses the lock token of the message you pass in. The host rejects tokens it does not hold,
+for example when the lock has expired.
 
-This is an integration candidate, not a standalone released feature. It requires
-the matching worker and Maven plugin changes for deferred bindings, the matching
-Java library trigger annotations, and an Azure SDK build containing the supported
-`ServiceBusReceivedMessage.fromAmqpMessage(BinaryData, String)` factory. The pinned
-`7.19.0-beta.1` SDK coordinate must be built from the companion Azure SDK change.
-An unmodified artifact with that coordinate does not provide the required API.
-Update this dependency to the eventual released factory version before releasing
-this artifact.
+## Requirements
 
-The source-verified settlement wire baseline is Service Bus extension 5.13.2 or
-later. A minimum released Functions host version has not been established.
-The host must supply deferred model binding data, and the Java worker must enable
-`supportsDeferredBinding` through generated binding metadata. Binding expressions
-in other input or output bindings can disable deferred trigger data. In that
-case, SDK parameters fail explicitly rather than silently falling back to a body
-binding. Ordinary body bindings are unchanged.
+* A host that sends deferred model binding data for Service Bus triggers.
+* A Java worker with SDK type invocation support, built against `azure-functions-java-spi`
+  1.2.0-SNAPSHOT and `azure-functions-java-sdktypes` 1.1.0-SNAPSHOT.
+* `azure-messaging-servicebus` 7.19.0-beta.1, which adds
+  `ServiceBusReceivedMessage.fromAmqpMessage(BinaryData, String)`. It comes from
+  [azure-sdk-for-java#50904](https://github.com/Azure/azure-sdk-for-java/pull/50904) and is not on
+  Maven Central yet.
 
-Add `com.microsoft.azure.functions:azure-functions-java-servicebus:1.0.0-SNAPSHOT`
-to the function application's dependencies. The worker consumes
-`azure-functions-java-spi:1.2.0-SNAPSHOT` and
-`azure-functions-java-sdktypes:1.1.0-SNAPSHOT`.
+Add `com.microsoft.azure.functions:azure-functions-java-servicebus` to the function application.
+The worker keeps its own gRPC and protobuf copies relocated, so this artifact brings the ones it needs.
 
-## Manual settlement
+## Settling messages
 
-Use `@BindingName` to associate the actions parameter with the trigger's host
-binding name. The actions parameter does not create another host binding.
-Disable automatic completion when settling manually.
+Declare an unannotated `ServiceBusMessageActions` parameter. Turn off automatic completion with
+`autoCompleteMessages` in the `serviceBus` section of `host.json` when you settle messages yourself.
 
 ```java
 @FunctionName("settleOrder")
 public void run(
-    @ServiceBusQueueTrigger(
-        name = "order",
-        queueName = "orders",
-        connection = "ServiceBusConnection",
-        autoCompleteMessages = false)
+    @ServiceBusQueueTrigger(name = "order", queueName = "orders", connection = "ServiceBusConnection")
     ServiceBusReceivedMessage order,
-    @BindingName("order") ServiceBusMessageActions actions) {
+    ServiceBusMessageActions actions) {
     actions.deadLetterMessage(order, "InvalidOrder", "The order is missing its identifier.");
 }
 ```
 
-The actions API is synchronous. It provides `completeMessage`, `abandonMessage`,
-`deferMessage`, `deadLetterMessage`, and `renewMessageLock`. Abandon, defer and
-dead-letter have property-update overloads taking `Map<String, Object>`.
-Properties are serialized as an AMQP map, not JSON. Null and empty dead-letter
-reason/description values preserve the host protocol's absent/empty distinction.
-Lock renewal returns no timestamp because the host response is empty.
+`ServiceBusMessageActions` is an interface, so tests can supply their own implementation. It offers
+`completeMessage`, `abandonMessage`, `deferMessage`, `deadLetterMessage` and `renewMessageLock`.
+Abandon, defer and dead letter also take a `Map<String, Object>` of application properties to modify.
+Calls are synchronous with a 30 second deadline. A rejected request throws
+`ServiceBusSettlementException`, which carries the operation and the gRPC status code name.
 
-The same actions object accepts each message in a batch. It only accepts the
-exact message objects hydrated for its own invocation and binding. It rejects
-copied messages, messages from another invocation, and use after invocation exit.
-Successful complete, abandon, defer and dead-letter calls prevent another local
-settlement of that token. Lock renewal does not mark a message settled.
-RPC errors propagate to the function. All calls must finish before the function
-returns. Do not retain messages or actions for later background work.
+## Wire contract
 
-## Payload and transport
+`src/main/proto/settlement.proto` is copied from the Service Bus extension in
+[azure-sdk-for-net](https://github.com/Azure/azure-sdk-for-net/blob/de7f4bb91a9cef4cb2e7169556f3a65df6644155/sdk/servicebus/Microsoft.Azure.WebJobs.Extensions.ServiceBus/src/Grpc/Proto/settlement.proto).
+Only the two Java options at the top were added. Stubs are generated at build time.
 
-The accepted envelope is version `1.0`, source `AzureServiceBusReceivedMessage`,
-and content type `application/octet-stream`. Its content is a 16-byte
-`.NET Guid.ToByteArray()` lock token followed by a raw AMQP message. Envelope
-content type is distinct from the message's own content type. Binary bodies,
-application properties and 64-bit sequence numbers are decoded by the supported
-Azure SDK factory without a JSON or text round trip. Unsupported AMQP forms are
-rejected by that factory rather than partially decoded.
+The model binding data envelope is version `1.0`, source `AzureServiceBusReceivedMessage` and content
+type `application/octet-stream`. Its content is the 16 byte `.NET Guid.ToByteArray()` lock token
+followed by the raw AMQP message.
 
-The transport uses the endpoint supplied to the worker at startup. Channels are
-shared within the process and closed on process shutdown. Messages and actions
-are invocation-local and disposed through the worker's completion hook.
-Plain HTTP is accepted only for `localhost` or literal loopback addresses.
-Remote endpoints require HTTPS. Each synchronous RPC has a 30-second deadline.
-Session settlement, remote worker proxies, and live Azure host end-to-end
-settlement have not been established by this candidate.
+The endpoint is the one the host gave the worker at startup. Plain HTTP is only accepted for loopback
+addresses. Any other host needs HTTPS.
 
 ## Building
 
-Install the companion Azure SDK artifact first. Use the repository's configured
-Azure Artifacts feed for dependencies. With a compatible JDK configured:
+The module is not part of the default build because the SDK beta above is not on the feed yet.
+Install that SDK build locally, then use JDK 9 or later, since the module compiles with
+`--release 8`.
 
 ```powershell
-mvn -s settings.xml -pl azure-functions-java-servicebus -am test
-mvn -s settings.xml -pl azure-functions-java-servicebus -am install "-Dgpg.skip=true"
+mvn -pl azure-functions-java-servicebus -Pservicebus install "-Dgpg.skip=true"
 ```
 
-The inherited Maven parent uses older analysis plugins that require JDK 8 for
-the full lifecycle. On newer JDKs, `test` can run independently of those
-verification-phase plugins.
+This module does not use `java-8-parent`. Its dependency management pins old Guava, Netty and Jackson
+versions that conflict with the Azure SDK and gRPC.
 
-For uncached dependencies, use the repository's documented
-`eng\scripts\Install-MavenCredentialProvider.ps1` helper and ordinary POM-based
-repository configuration. If the `-s settings.xml` mirror prevents the credential
-provider itself from loading, omit `-s settings.xml` for that local restore.
-The module still declares the approved Azure Artifacts feed. Do not substitute
-an alternate package repository or commit authentication configuration.
-
-Unlike the older modules, this module inherits the repository aggregator rather
-than `java-8-parent`. That parent's legacy dependency management overrides modern
-SDK and gRPC transitive versions. Compiler, test, source and Javadoc plugins are
-pinned explicitly instead. The integration tests execute on Java 8 as well as
-Java 17, rather than relying only on a Java 8 bytecode target.
+Not covered yet is an end to end run against a live Functions host and Service Bus namespace.

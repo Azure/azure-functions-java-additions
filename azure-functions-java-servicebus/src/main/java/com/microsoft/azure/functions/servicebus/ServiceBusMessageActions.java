@@ -7,88 +7,88 @@
 package com.microsoft.azure.functions.servicebus;
 
 import com.azure.messaging.servicebus.ServiceBusReceivedMessage;
-import com.microsoft.azure.functions.internal.spi.sdk.SdkInvocationContext;
-import com.microsoft.azure.functions.servicebus.implementation.SettlementTransport;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.HashSet;
 
 /**
- * Synchronous settlement of messages held by the Functions host.
- * Instances are injected using {@code @BindingName} and expire with the invocation.
- * Disable automatic completion on the Service Bus trigger when settling manually.
+ * Settles Service Bus messages that the Functions host received and still holds the lock for.
+ *
+ * <p>Declare an unannotated parameter of this type on a function to receive an instance. Settlement uses the
+ * lock token of the message, so pass messages that were delivered to your function. Turn off automatic
+ * completion in the Service Bus extension settings when you settle messages yourself.</p>
+ *
+ * <p>Every method blocks until the host answers and throws {@link ServiceBusSettlementException} when the host
+ * rejects the request, for example when the lock has expired or the message was already settled.</p>
  */
-public final class ServiceBusMessageActions {
-    private final SdkInvocationContext context;
-    private final Map<ServiceBusReceivedMessage, String> messages;
-    private final Set<String> settledTokens = new HashSet<>();
-    private final SettlementTransport transport;
-
-    ServiceBusMessageActions(SdkInvocationContext context, Map<ServiceBusReceivedMessage, String> messages) {
-        this.context = Objects.requireNonNull(context, "context");
-        if (context.getHostEndpoint() == null) {
-            throw new IllegalStateException("Service Bus actions require the Functions host endpoint");
-        }
-        this.messages = new IdentityHashMap<>(messages);
-        this.transport = SettlementTransport.forEndpoint(context.getHostEndpoint());
-    }
-
-    public void completeMessage(ServiceBusReceivedMessage message) {
-        settle("Complete", message, Collections.emptyMap(), null, null);
-    }
-
-    public void abandonMessage(ServiceBusReceivedMessage message) {
-        abandonMessage(message, Collections.emptyMap());
-    }
-
-    public void abandonMessage(ServiceBusReceivedMessage message, Map<String, Object> propertiesToModify) {
-        settle("Abandon", message, propertiesToModify, null, null);
-    }
-
-    public void deferMessage(ServiceBusReceivedMessage message) {
-        deferMessage(message, Collections.emptyMap());
-    }
-
-    public void deferMessage(ServiceBusReceivedMessage message, Map<String, Object> propertiesToModify) {
-        settle("Defer", message, propertiesToModify, null, null);
-    }
-
-    public void deadLetterMessage(ServiceBusReceivedMessage message, String reason, String description) {
-        deadLetterMessage(message, reason, description, Collections.emptyMap());
-    }
-
-    public void deadLetterMessage(ServiceBusReceivedMessage message, String reason, String description,
-        Map<String, Object> propertiesToModify) {
-        settle("Deadletter", message, propertiesToModify, reason, description);
-    }
+public interface ServiceBusMessageActions {
+    /**
+     * Completes the message. It is removed from the entity.
+     *
+     * @param message the received message
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void completeMessage(ServiceBusReceivedMessage message);
 
     /**
-     * Renews the host-held lock. The host returns no new expiration timestamp.
+     * Abandons the message. It becomes available for delivery again.
      *
-     * @param message a message from this invocation
+     * @param message the received message
+     * @throws ServiceBusSettlementException if the host rejects the request
      */
-    public void renewMessageLock(ServiceBusReceivedMessage message) {
-        settle("RenewMessageLock", message, Collections.emptyMap(), null, null);
-    }
+    void abandonMessage(ServiceBusReceivedMessage message);
 
-    private synchronized void settle(String operation, ServiceBusReceivedMessage message,
-        Map<String, Object> properties, String reason, String description) {
-        if (!context.isActive()) {
-            throw new IllegalStateException("Service Bus invocation has ended");
-        }
-        String token = messages.get(Objects.requireNonNull(message, "message"));
-        if (token == null) {
-            throw new IllegalArgumentException("Message does not belong to this invocation and binding");
-        }
-        if (settledTokens.contains(token)) {
-            throw new IllegalStateException("Message has already been settled");
-        }
-        transport.settle(operation, token, Objects.requireNonNull(properties, "propertiesToModify"), reason, description);
-        if (!"RenewMessageLock".equals(operation)) {
-            settledTokens.add(token);
-        }
-    }
+    /**
+     * Abandons the message and modifies its application properties.
+     *
+     * @param message the received message
+     * @param propertiesToModify application properties to set, or null for none
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void abandonMessage(ServiceBusReceivedMessage message, Map<String, Object> propertiesToModify);
+
+    /**
+     * Defers the message. It can only be received again by its sequence number.
+     *
+     * @param message the received message
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void deferMessage(ServiceBusReceivedMessage message);
+
+    /**
+     * Defers the message and modifies its application properties.
+     *
+     * @param message the received message
+     * @param propertiesToModify application properties to set, or null for none
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void deferMessage(ServiceBusReceivedMessage message, Map<String, Object> propertiesToModify);
+
+    /**
+     * Moves the message to the dead-letter subqueue.
+     *
+     * @param message the received message
+     * @param reason the dead-letter reason, or null for none
+     * @param description the dead-letter error description, or null for none
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void deadLetterMessage(ServiceBusReceivedMessage message, String reason, String description);
+
+    /**
+     * Moves the message to the dead-letter subqueue and modifies its application properties.
+     *
+     * @param message the received message
+     * @param reason the dead-letter reason, or null for none
+     * @param description the dead-letter error description, or null for none
+     * @param propertiesToModify application properties to set, or null for none
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void deadLetterMessage(ServiceBusReceivedMessage message, String reason, String description,
+        Map<String, Object> propertiesToModify);
+
+    /**
+     * Renews the lock of the message. The host does not report the new expiration time.
+     *
+     * @param message the received message
+     * @throws ServiceBusSettlementException if the host rejects the request
+     */
+    void renewMessageLock(ServiceBusReceivedMessage message);
 }
