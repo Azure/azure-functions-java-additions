@@ -9,6 +9,7 @@ package com.microsoft.azure.functions.sdktype;
 import com.microsoft.azure.functions.sdktype.blob.BlobClientSdkTypeFactory;
 import com.microsoft.azure.functions.sdktype.blob.BlobContainerSdkTypeFactory;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkRegistryException;
+import com.microsoft.azure.functions.sdktype.servicebus.ServiceBusSdkTypeFactory;
 
 import java.lang.reflect.Parameter;
 import java.util.HashMap;
@@ -25,6 +26,8 @@ public class SdkTypeRegistry {
     public SdkTypeRegistry() {
         knownTypes.put("com.azure.storage.blob.BlobClient", new BlobClientSdkTypeFactory());
         knownTypes.put("com.azure.storage.blob.BlobContainerClient", new BlobContainerSdkTypeFactory());
+        knownTypes.put(ServiceBusSdkTypeFactory.MESSAGE, new ServiceBusSdkTypeFactory());
+        knownTypes.put(ServiceBusSdkTypeFactory.ACTIONS, new ServiceBusSdkTypeFactory());
     }
 
     /**

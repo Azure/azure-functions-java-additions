@@ -14,6 +14,17 @@ For more information about Azure Java Functions please visit the [complete docum
 
 * Java 8
 
+## SDK bindings
+
+The internal `sdk` SPI adds `ModelBindingData` and `SdkInvocationContext`. While it builds
+the object for one parameter, the worker passes the raw host payloads for that parameter
+(none for a type resolved from the context alone) and the host endpoint from its startup
+arguments. The worker does not interpret extension payloads.
+
+The optional [Service Bus module](../azure-functions-java-servicebus/README.md)
+uses this contract. Applications must not package their own copies of the worker-owned
+SPI and SDK types artifacts.
+
 ## Summary
 
 [Azure Functions Summary](https://github.com/Azure/azure-functions-java-library#summary)

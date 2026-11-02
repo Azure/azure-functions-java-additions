@@ -52,5 +52,13 @@
                 <module>azure-functions-java-mcp</module>
             </modules>
         </profile>
+        <!-- Needs azure-messaging-servicebus 7.19.0-beta.1, which is not on Maven Central yet.
+             Build with -Pservicebus, and fold this module into <modules> once the SDK is released. -->
+        <profile>
+            <id>servicebus</id>
+            <modules>
+                <module>azure-functions-java-servicebus</module>
+            </modules>
+        </profile>
     </profiles>
 </project>

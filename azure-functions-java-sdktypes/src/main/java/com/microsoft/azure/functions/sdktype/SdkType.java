@@ -6,6 +6,8 @@
 
 package com.microsoft.azure.functions.sdktype;
 
+import com.microsoft.azure.functions.internal.spi.sdk.SdkInvocationContext;
+
 /**
  * A recognized SDK type that:
  -  - Has references to a hydrator and verifier
@@ -43,11 +45,22 @@ public interface SdkType<M extends SdkTypeMetaData> {
      * @throws Exception if creation fails inside the hydrator or parseAndVerify throws an error.
      */
     default Object buildInstance() throws Exception {
+        return buildInstance(null);
+    }
+
+    /**
+     * Builds an object from fresh invocation-owned metadata.
+     *
+     * @param context invocation context, or null for legacy client hydration
+     * @return the hydrated object
+     * @throws Exception if validation or hydration fails
+     */
+    default Object buildInstance(SdkInvocationContext context) throws Exception {
         final M metaData = getMetaData();
         metaData.parseAndVerify();
         final SdkTypeHydrator<M> hydrator = getHydrator();
         try {
-            return hydrator.createInstance(metaData);
+            return hydrator.createInstance(metaData, context);
         } catch (Exception ex) {
             // Convert any reflection or parse error to SdkTypeCreationException
             throw new com.microsoft.azure.functions.sdktype.exceptions.SdkTypeCreationException(

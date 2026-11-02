@@ -19,6 +19,14 @@
 
 # Java SDK Types for Azure Functions
 
+Service Bus message types and the companion actions type are also recognized. Their
+runtime implementation is supplied by the optional
+[`azure-functions-java-servicebus`](../azure-functions-java-servicebus/README.md)
+artifact through `ServiceLoader`. These types have no required metadata fields, so
+the worker builds each one with `buildInstance(SdkInvocationContext)` and a context
+that carries the raw payloads for that parameter. A parameter without a binding name,
+such as the actions type, gets an empty payload list.
+
 This library provides a **two-phase** approach to binding advanced Azure SDK clients in the Java Functions worker:
 
 1. **Build-Time Analysis**: A minimal metadata object (`SdkTypeMetaData`) is created for each recognized SDK parameter (e.g., `BlobClient`, `BlobContainerClient`, etc.).
