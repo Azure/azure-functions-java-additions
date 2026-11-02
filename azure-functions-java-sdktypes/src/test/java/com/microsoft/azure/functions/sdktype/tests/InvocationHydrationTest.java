@@ -2,10 +2,12 @@ package com.microsoft.azure.functions.sdktype.tests;
 
 import com.microsoft.azure.functions.internal.spi.sdk.ModelBindingData;
 import com.microsoft.azure.functions.internal.spi.sdk.SdkInvocationContext;
+import com.microsoft.azure.functions.sdktype.CachableSdkType;
 import com.microsoft.azure.functions.sdktype.SdkType;
 import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 import com.microsoft.azure.functions.sdktype.SdkTypeRegistry;
+import com.microsoft.azure.functions.sdktype.servicebus.ServiceBusSdkTypeFactory;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Parameter;
 import java.net.URI;
@@ -63,30 +65,25 @@ class InvocationHydrationTest {
     }
 
     @Test
-    void metadataIsFreshAndNotCopiedFromAnalysisState() throws Exception {
+    void serviceBusTypesNeedNoMetadataFields() throws Exception {
         Parameter parameter = InvocationHydrationTest.class.getDeclaredMethod("fixture", String.class)
             .getParameters()[0];
         SdkTypeRegistry registry = new SdkTypeRegistry();
-        SdkTypeMetaData analysis = registry.createMetaData(
-            "com.azure.messaging.servicebus.ServiceBusReceivedMessage", parameter);
-        analysis.setFieldValue("invocation", "previous");
-        SdkTypeMetaData invocation = registry.createMetaData(analysis.getFqcn(), analysis.getParam());
-        assertNotSame(analysis, invocation);
-        assertNull(invocation.getFieldValue("invocation"));
-        assertSame(parameter, invocation.getParam());
-        assertTrue(invocation.getRequiredFields().isEmpty());
-        assertFalse(registry.createSdkType(invocation) instanceof com.microsoft.azure.functions.sdktype.CachableSdkType);
+        for (String fqcn : new String[] {ServiceBusSdkTypeFactory.MESSAGE, ServiceBusSdkTypeFactory.ACTIONS}) {
+            SdkTypeMetaData metadata = registry.createMetaData(fqcn, parameter);
+            assertSame(parameter, metadata.getParam());
+            assertTrue(metadata.getRequiredFields().isEmpty());
+            assertFalse(registry.createSdkType(metadata) instanceof CachableSdkType);
+            assertThrows(UnsupportedOperationException.class, () -> metadata.setFieldValue("key", "value"));
+        }
     }
 
     private void fixture(String ignored) { }
 
     private static SdkInvocationContext context() {
         return new SdkInvocationContext() {
-            public String getInvocationId() { return "invocation"; }
-            public List<ModelBindingData> getModelBindingData(String name) { return Collections.emptyList(); }
+            public List<ModelBindingData> getModelBindingData() { return Collections.emptyList(); }
             public URI getHostEndpoint() { return null; }
-            public boolean isActive() { return true; }
-            public void registerCloseable(AutoCloseable resource) { }
         };
     }
 }

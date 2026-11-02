@@ -1,9 +1,9 @@
 ## Unreleased
 
 ### New
-* Added invocation-scoped SDK binding data and cleanup hooks in SPI 1.2.0-SNAPSHOT.
-* Added context-aware hydration and Service Bus parameter analysis in SDK types 1.1.0-SNAPSHOT while preserving Blob bindings.
-* Added optional Service Bus SDK message bindings and host-backed settlement actions in azure-functions-java-servicebus 1.0.0-SNAPSHOT. This integration candidate depends on companion worker, Maven plugin, Java library and Azure SDK changes.
+* Added `SdkInvocationContext` and `ModelBindingData` to SPI so a worker can pass raw host payloads and the host endpoint to SDK types.
+* Added context-aware hydration and Service Bus parameter analysis to SDK types.
+* Added the optional `azure-functions-java-servicebus` module with `ServiceBusReceivedMessage` bindings and `ServiceBusMessageActions` settlement through the host. It needs azure-messaging-servicebus 7.19.0-beta.1 and is built with `-Pservicebus` until that SDK is released.
 
 ## azure-functions-java-spi_1.0.0
 

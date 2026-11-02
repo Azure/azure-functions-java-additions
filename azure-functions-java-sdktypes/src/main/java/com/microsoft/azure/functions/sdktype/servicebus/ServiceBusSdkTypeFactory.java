@@ -61,20 +61,26 @@ public final class ServiceBusSdkTypeFactory implements SdkTypeFactory {
 
         @Override
         public Object createInstance(ServiceBusMetaData meta, SdkInvocationContext context) throws Exception {
-            if (context == null || !context.isActive()) {
-                throw new IllegalStateException("Service Bus binding invocation is not active");
-            }
-            final Iterator<ServiceBusBindingProvider> providers = ServiceLoader.load(
-                ServiceBusBindingProvider.class, meta.getParam().getDeclaringExecutable()
-                    .getDeclaringClass().getClassLoader()).iterator();
-            if (!providers.hasNext()) {
-                throw new IllegalStateException("Add azure-functions-java-servicebus to the application");
-            }
-            final ServiceBusBindingProvider provider = providers.next();
-            if (providers.hasNext()) {
-                throw new IllegalStateException("Multiple Service Bus binding providers found");
-            }
-            return provider.createInstance(meta.getParam(), context);
+            final Class<?> functionClass = meta.getParam().getDeclaringExecutable().getDeclaringClass();
+            return PROVIDERS.get(functionClass).createInstance(meta.getParam(), context);
         }
     }
+
+    /** Looks the provider up once per function class, so nothing is retained after its class loader goes. */
+    private static final ClassValue<ServiceBusBindingProvider> PROVIDERS =
+        new ClassValue<ServiceBusBindingProvider>() {
+            @Override
+            protected ServiceBusBindingProvider computeValue(Class<?> functionClass) {
+                final Iterator<ServiceBusBindingProvider> providers = ServiceLoader.load(
+                    ServiceBusBindingProvider.class, functionClass.getClassLoader()).iterator();
+                if (!providers.hasNext()) {
+                    throw new IllegalStateException("Add azure-functions-java-servicebus to the application");
+                }
+                final ServiceBusBindingProvider provider = providers.next();
+                if (providers.hasNext()) {
+                    throw new IllegalStateException("Multiple Service Bus binding providers found");
+                }
+                return provider;
+            }
+        };
 }

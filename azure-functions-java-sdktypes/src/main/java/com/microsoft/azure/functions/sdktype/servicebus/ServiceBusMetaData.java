@@ -8,16 +8,14 @@ package com.microsoft.azure.functions.sdktype.servicebus;
 
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 import java.lang.reflect.Parameter;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Static parameter information. Binary payloads remain in the invocation context.
+ * The parameter and type a Service Bus binding is built for. It has no required fields, because the
+ * message bytes travel in the invocation context.
  */
 public final class ServiceBusMetaData implements SdkTypeMetaData {
     private final String fqcn;
     private final Parameter parameter;
-    private final Map<String, Object> fields = new HashMap<>();
 
     public ServiceBusMetaData(String fqcn, Parameter parameter) {
         this.fqcn = fqcn;
@@ -36,12 +34,12 @@ public final class ServiceBusMetaData implements SdkTypeMetaData {
 
     @Override
     public Object getFieldValue(String key) {
-        return fields.get(key);
+        return null;
     }
 
     @Override
     public void setFieldValue(String key, Object value) {
-        fields.put(key, value);
+        throw new UnsupportedOperationException("Service Bus bindings have no metadata fields");
     }
 
     @Override

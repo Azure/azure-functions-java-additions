@@ -14,21 +14,16 @@ For more information about Azure Java Functions please visit the [complete docum
 
 * Java 8
 
-## Invocation-scoped SDK bindings
+## SDK bindings
 
-The internal `sdk` SPI adds immutable `ModelBindingData` and `SdkInvocationContext`.
-Workers preserve raw payload bytes, expose ordered payloads by host binding name,
-and provide the startup host endpoint without interpreting extension payloads.
-Each invocation has its own context. Register invocation-owned identity state
-with `registerCloseable`, invalidate the context when invocation middleware exits,
-and close resources on success, failure and cancellation. Cleanup failures must
-not replace the original invocation failure. Shared transport channels are not
-invocation-owned resources.
+The internal `sdk` SPI adds `ModelBindingData` and `SdkInvocationContext`. While it builds
+the object for one parameter, the worker passes the raw host payloads for that parameter
+(none for a type resolved from the context alone) and the host endpoint from its startup
+arguments. The worker does not interpret extension payloads.
 
 The optional [Service Bus module](../azure-functions-java-servicebus/README.md)
-uses this contract. Workers must provide SPI `1.2.0-SNAPSHOT` and SDK types
-`1.1.0-SNAPSHOT`. Applications must not package separate copies of these
-worker-owned SPI artifacts.
+uses this contract. Applications must not package their own copies of the worker-owned
+SPI and SDK types artifacts.
 
 ## Summary
 

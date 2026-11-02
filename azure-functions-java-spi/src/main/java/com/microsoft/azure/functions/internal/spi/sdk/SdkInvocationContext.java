@@ -10,41 +10,21 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * Invocation-local data for SDK bindings. Implementations must not be shared
- * between invocations.
+ * What the worker hands to an SDK type while it builds the object for one function parameter.
  */
 public interface SdkInvocationContext {
-    String getInvocationId();
-
     /**
-     * Returns immutable, ordered payloads for a host binding, or an empty list.
+     * Returns the raw host payloads for the parameter being built.
      *
-     * @param bindingName host binding name, not the Java parameter name
-     * @return immutable payload list
+     * @return one payload for a single binding, several for a batch, or an empty list when the
+     *         host sent none, for example for a type that is resolved from the context alone
      */
-    List<ModelBindingData> getModelBindingData(String bindingName);
+    List<ModelBindingData> getModelBindingData();
 
     /**
-     * @return host auxiliary endpoint from worker startup, or null if unavailable
+     * Returns the host auxiliary gRPC endpoint taken from the worker startup arguments.
+     *
+     * @return the endpoint, or null when the worker was not given one
      */
     URI getHostEndpoint();
-
-    /**
-     * The worker invalidates this context after invocation middleware exits,
-     * including on cancellation and failure.
-     *
-     * @return whether this invocation can still perform host operations
-     */
-    boolean isActive();
-
-    /**
-     * Registers invocation-owned state for cleanup on every exit path.
-     * Shared transports must not be registered here.
-     * Registration must be atomic with invalidation, and must reject an
-     * inactive context. Cleanup callbacks run outside the registration lock.
-     *
-     * @param resource resource closed by the worker when the invocation exits
-     * @throws IllegalStateException if the invocation has ended
-     */
-    void registerCloseable(AutoCloseable resource);
 }
