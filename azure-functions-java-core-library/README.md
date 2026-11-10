@@ -5,6 +5,10 @@ This repo contains core library for building Azure Java Functions. `azure-functi
 However, you don't need to include `azure-functions-java-core-library` as a dependency when you build your function app, because it comes with [azure-functions-java-library](https://github.com/Azure/azure-functions-java-library)
 which has a transitive dependency on `azure-functions-java-core-library`
 
+`HttpMethod.QUERY` represents the HTTP QUERY method and can be used in an
+`@HttpTrigger` method list. `HttpMethod.value` accepts the method name in any case.
+Routing QUERY requests also requires support in the deployed Functions host.
+
 For more information about Azure Java Functions please visit the [complete documentation of Azure Functions - Java Developer Guide](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-java).
 
 ## azure-functions-maven plugin
