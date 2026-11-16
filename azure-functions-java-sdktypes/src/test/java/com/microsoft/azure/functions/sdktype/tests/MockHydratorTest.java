@@ -9,9 +9,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class MockHydratorTest {
 
     static class FakeMetaData implements SdkTypeMetaData {
-        @Override public Object getFieldValue(String key) { return null; }
-        @Override public void setFieldValue(String key, Object value) {}
-        @Override public void parseAndVerify() {}
         @Override public java.lang.reflect.Parameter getParam() { return null; }
         @Override public String getFqcn() { return "FakeFqcn"; }
     }

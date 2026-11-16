@@ -7,51 +7,17 @@
 package com.microsoft.azure.functions.sdktype;
 
 import java.lang.reflect.Parameter;
-import java.util.Collections;
-import java.util.Set;
 
 /**
- * A generic interface for storing and verifying raw fields needed
- * to build an SDK client object.
- * Typically:
- *   - setFieldValue(key, value)
- *   - parseAndVerify() to finalize typed fields and do checks
- *   - buildCacheKey() if relevant
+ * Immutable, validated values for one invocation of a recognized SDK type.
+ * Instances are produced by {@link SdkTypeDescriptor#bind(java.util.Map)}.
+ *
+ * <p><b>Thread safety.</b> Implementations must be immutable: all fields final,
+ * no setters and no mutable state exposed through getters. An instance can then be
+ * passed freely between threads, held by an {@link SdkType} and used as the source
+ * of a cache key and of the built SDK object without any further synchronization.</p>
  */
 public interface SdkTypeMetaData {
-    /**
-     * If code wants to do a fully generic approach with
-     * metadata keys, we can have a method for a set of required keys.
-     *
-     * @return the set of required field names
-     */
-    default Set<String> getRequiredFields() {
-        return Collections.emptySet();
-    }
-
-    /**
-     * The worker or SdkType might call this to retrieve a raw field value.
-     *
-     * @param key the field name
-     * @return the field value
-     */
-    Object getFieldValue(String key);
-
-    /**
-     * The worker or SdkType might call this to store a raw field value.
-     *
-     * @param key the field name
-     * @param value the field value
-     */
-    void setFieldValue(String key, Object value);
-
-    /**
-     * A method to finalize fields and do validations.
-     * If something is missing or invalid, throw a runtime exception (e.g., IllegalArgumentException)
-     * or a custom type if desired.
-     */
-    void parseAndVerify();
-
     /**
      * Return a Parameter object for the argument that uses this SDK type.
      *

@@ -7,6 +7,7 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
 import com.microsoft.azure.functions.sdktype.SdkType;
+import com.microsoft.azure.functions.sdktype.SdkTypeDescriptor;
 import com.microsoft.azure.functions.sdktype.SdkTypeFactory;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkTypeCreationException;
@@ -19,9 +20,8 @@ import java.lang.reflect.Parameter;
 public class BlobContainerSdkTypeFactory implements SdkTypeFactory {
 
     @Override
-    public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws SdkTypeCreationException {
-        // Return a minimal metaData object
-        return new BlobContainerMetaData(fqcn, param);
+    public SdkTypeDescriptor createDescriptor(String fqcn, Parameter param) throws SdkTypeCreationException {
+        return new BlobContainerDescriptor(fqcn, param);
     }
 
     @Override

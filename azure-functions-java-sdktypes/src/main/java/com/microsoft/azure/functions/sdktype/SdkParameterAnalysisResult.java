@@ -12,21 +12,23 @@ import java.util.List;
 
 
 /**
- * Holds discovered SdkTypeMetaData objects from analyzing a method's parameters.
+ * Holds discovered SdkTypeDescriptor objects from analyzing a method's parameters.
  * Typically used by the SdkParameterAnalyzer to store recognized SDK-based parameters.
+ * The result is immutable, and so are the descriptors, so both can be shared by
+ * concurrent invocations.
  */
-public class SdkParameterAnalysisResult {
-    private final List<SdkTypeMetaData> sdkTypeMetaDatas = new ArrayList<>();
+public final class SdkParameterAnalysisResult {
+    private final List<SdkTypeDescriptor> sdkTypeDescriptors;
 
-    public void addSdkTypeMetaData(SdkTypeMetaData sdkTypeMetaData) {
-        this.sdkTypeMetaDatas.add(sdkTypeMetaData);
+    public SdkParameterAnalysisResult(List<SdkTypeDescriptor> sdkTypeDescriptors) {
+        this.sdkTypeDescriptors = Collections.unmodifiableList(new ArrayList<>(sdkTypeDescriptors));
     }
 
-    public List<SdkTypeMetaData> getSdkTypesMetaData() {
-        return Collections.unmodifiableList(sdkTypeMetaDatas);
+    public List<SdkTypeDescriptor> getSdkTypeDescriptors() {
+        return sdkTypeDescriptors;
     }
 
     public boolean hasAnySdkTypes() {
-        return !sdkTypeMetaDatas.isEmpty();
+        return !sdkTypeDescriptors.isEmpty();
     }
 }

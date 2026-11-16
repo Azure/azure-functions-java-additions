@@ -16,7 +16,8 @@ import java.util.Map;
 
 /**
  * A registry that knows about recognized SDK client FQCNs and can create SdkType objects.
- * Throws SdkRegistryException if asked to create metadata or an SdkType for an unrecognized FQCN.
+ * Throws SdkRegistryException if asked to create a descriptor or an SdkType for an unrecognized FQCN.
+ * The registry is not modified after construction, so it is safe to share between threads.
  */
 public class SdkTypeRegistry {
     // Maps FQCN -> Class<? extends SdkType>
@@ -38,23 +39,23 @@ public class SdkTypeRegistry {
     }
 
     /**
-     * Build-time usage: create a minimal SdkTypeMetaData from the recognized fqcn + param.
+     * Build-time usage: create an immutable SdkTypeDescriptor from the recognized fqcn + param.
      *
      * @param fqcn the fully qualified class name of the SDK type
      * @param param the parameter being analyzed
-     * @return the created SdkTypeMetaData
-     * @throws Exception if metadata creation fails
+     * @return the created SdkTypeDescriptor
+     * @throws Exception if descriptor creation fails
      */
-    public SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws Exception {
+    public SdkTypeDescriptor createDescriptor(String fqcn, Parameter param) throws Exception {
         final SdkTypeFactory factory = knownTypes.get(fqcn);
         if (factory == null) {
             throw new SdkRegistryException("Unrecognized SdkType: " + fqcn);
         }
-        return factory.createMetaData(fqcn, param);
+        return factory.createDescriptor(fqcn, param);
     }
 
     /**
-     * Runtime usage: produce the final SdkType from the stored metaData.
+     * Runtime usage: produce the final SdkType from the immutable metaData of one invocation.
      *
      * @param metaData the metadata containing configuration details
      * @return the created SdkType

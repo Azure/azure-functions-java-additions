@@ -1,7 +1,7 @@
 package com.microsoft.azure.functions.sdktype.tests;
 
 import com.microsoft.azure.functions.sdktype.SdkTypeRegistry;
-import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
+import com.microsoft.azure.functions.sdktype.SdkTypeDescriptor;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkRegistryException;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,20 +23,20 @@ class SdkTypeRegistryTest {
     }
 
     @Test
-    void testCreateMetaDataRecognized() throws Exception {
+    void testCreateDescriptorRecognized() throws Exception {
         SdkTypeRegistry registry = new SdkTypeRegistry();
         Method m = ExampleFunctions.class
                 .getMethod("exampleBlobClientMethod", com.azure.storage.blob.BlobClient.class);
         Parameter p = m.getParameters()[0];
 
-        SdkTypeMetaData meta = registry.createMetaData("com.azure.storage.blob.BlobClient", p);
-        assertNotNull(meta);
-        assertEquals("com.azure.storage.blob.BlobClient", meta.getFqcn());
-        assertEquals(p, meta.getParam());
+        SdkTypeDescriptor descriptor = registry.createDescriptor("com.azure.storage.blob.BlobClient", p);
+        assertNotNull(descriptor);
+        assertEquals("com.azure.storage.blob.BlobClient", descriptor.getFqcn());
+        assertEquals(p, descriptor.getParam());
     }
 
     @Test
-    void testCreateMetaDataUnrecognizedThrows() {
+    void testCreateDescriptorUnrecognizedThrows() {
         SdkTypeRegistry registry = new SdkTypeRegistry();
         Parameter dummyParam = null;
         try {
@@ -50,7 +50,7 @@ class SdkTypeRegistryTest {
         // try an unrecognized FQCN
         Parameter finalDummyParam = dummyParam;
         assertThrows(SdkRegistryException.class, () -> {
-            registry.createMetaData("com.example.Unrecognized", finalDummyParam);
+            registry.createDescriptor("com.example.Unrecognized", finalDummyParam);
         });
     }
 }

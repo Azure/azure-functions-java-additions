@@ -14,6 +14,11 @@ class SdkParameterAnalyzerTest {
             // no-op
         }
 
+        public void twoRecognizedMethod(com.azure.storage.blob.BlobClient blobClient,
+                                        com.azure.storage.blob.BlobContainerClient containerClient) {
+            // no-op
+        }
+
         public void unrecognizedMethod(String onlyString) {
             // no-op
         }
@@ -28,9 +33,25 @@ class SdkParameterAnalyzerTest {
         SdkParameterAnalysisResult result = analyzer.analyze(m);
 
         assertTrue(result.hasAnySdkTypes(), "Expected at least one recognized param");
-        assertEquals(1, result.getSdkTypesMetaData().size());
-        SdkTypeMetaData meta = result.getSdkTypesMetaData().get(0);
-        assertEquals("com.azure.storage.blob.BlobClient", meta.getFqcn());
+        assertEquals(1, result.getSdkTypeDescriptors().size());
+        SdkTypeDescriptor descriptor = result.getSdkTypeDescriptors().get(0);
+        assertEquals("com.azure.storage.blob.BlobClient", descriptor.getFqcn());
+        assertSame(m.getParameters()[0].getType(), descriptor.getParam().getType());
+        assertEquals(m.getParameters()[0], descriptor.getParam());
+    }
+
+    @Test
+    void testAnalyzeKeepsOneDescriptorPerRecognizedParameter() throws NoSuchMethodException {
+        SdkParameterAnalyzer analyzer = new SdkParameterAnalyzer();
+        Method m = TestFunctions.class.getMethod("twoRecognizedMethod",
+                com.azure.storage.blob.BlobClient.class, com.azure.storage.blob.BlobContainerClient.class);
+
+        SdkParameterAnalysisResult result = analyzer.analyze(m);
+
+        assertEquals(2, result.getSdkTypeDescriptors().size());
+        assertEquals(m.getParameters()[0], result.getSdkTypeDescriptors().get(0).getParam());
+        assertEquals(m.getParameters()[1], result.getSdkTypeDescriptors().get(1).getParam());
+        assertNotSame(result.getSdkTypeDescriptors().get(0), result.getSdkTypeDescriptors().get(1));
     }
 
     @Test
@@ -40,6 +61,6 @@ class SdkParameterAnalyzerTest {
 
         SdkParameterAnalysisResult result = analyzer.analyze(m);
         assertFalse(result.hasAnySdkTypes(), "Expected no recognized param");
-        assertEquals(0, result.getSdkTypesMetaData().size());
+        assertEquals(0, result.getSdkTypeDescriptors().size());
     }
 }
