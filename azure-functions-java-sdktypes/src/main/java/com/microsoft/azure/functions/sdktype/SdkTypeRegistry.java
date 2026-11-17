@@ -11,6 +11,7 @@ import com.microsoft.azure.functions.sdktype.blob.BlobContainerSdkTypeFactory;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkRegistryException;
 
 import java.lang.reflect.Parameter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,13 +20,15 @@ import java.util.Map;
  * Throws SdkRegistryException if asked to create a descriptor or an SdkType for an unrecognized FQCN.
  * The registry is not modified after construction, so it is safe to share between threads.
  */
-public class SdkTypeRegistry {
+public final class SdkTypeRegistry {
     // Maps FQCN -> Class<? extends SdkType>
-    private final Map<String, SdkTypeFactory> knownTypes = new HashMap<>();
+    private final Map<String, SdkTypeFactory> knownTypes;
 
     public SdkTypeRegistry() {
-        knownTypes.put("com.azure.storage.blob.BlobClient", new BlobClientSdkTypeFactory());
-        knownTypes.put("com.azure.storage.blob.BlobContainerClient", new BlobContainerSdkTypeFactory());
+        final Map<String, SdkTypeFactory> types = new HashMap<>();
+        types.put("com.azure.storage.blob.BlobClient", new BlobClientSdkTypeFactory());
+        types.put("com.azure.storage.blob.BlobContainerClient", new BlobContainerSdkTypeFactory());
+        this.knownTypes = Collections.unmodifiableMap(types);
     }
 
     /**

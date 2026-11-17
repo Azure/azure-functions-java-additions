@@ -13,7 +13,7 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SdkParameterAnalyzer {
+public final class SdkParameterAnalyzer {
     private final SdkTypeRegistry registry = new SdkTypeRegistry();
 
     public SdkParameterAnalysisResult analyze(Method method) {

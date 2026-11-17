@@ -13,7 +13,7 @@ import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 /**
  * Cachable SdkType for building a BlobContainerClient.
  */
-public class BlobContainerSdkType implements CachableSdkType<BlobContainerMetaData> {
+public final class BlobContainerSdkType implements CachableSdkType<BlobContainerMetaData> {
     private final BlobContainerMetaData metaData;
     private final BlobContainerHydrator hydrator;
 

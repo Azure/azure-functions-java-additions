@@ -18,7 +18,7 @@ import java.lang.reflect.Parameter;
  * SdkTypeFactory for building a BlobClientSdkType from BlobClientMetaData.
  * Potentially throws SdkTypeCreationException if metaData is invalid or reflection fails.
  */
-public class BlobClientSdkTypeFactory implements SdkTypeFactory {
+public final class BlobClientSdkTypeFactory implements SdkTypeFactory {
     @Override
     public SdkTypeDescriptor createDescriptor(String fqcn, Parameter param) throws SdkTypeCreationException {
         return new BlobClientDescriptor(fqcn, param);

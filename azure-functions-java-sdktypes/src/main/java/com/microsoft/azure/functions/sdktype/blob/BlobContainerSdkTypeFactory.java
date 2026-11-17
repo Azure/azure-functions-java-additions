@@ -17,7 +17,7 @@ import java.lang.reflect.Parameter;
 /**
  * SdkTypeFactory for BlobContainerClient scenario.
  */
-public class BlobContainerSdkTypeFactory implements SdkTypeFactory {
+public final class BlobContainerSdkTypeFactory implements SdkTypeFactory {
 
     @Override
     public SdkTypeDescriptor createDescriptor(String fqcn, Parameter param) throws SdkTypeCreationException {
