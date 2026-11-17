@@ -56,9 +56,9 @@ public interface SdkTypeDescriptor {
 }
 ```
 
-- **Purpose**: Describe one SDK parameter of one function. It is immutable and safe to share across threads.
+- **Purpose**: Describe one SDK parameter of one function. Immutable and safe to share across threads.
 - **Build Tools**: Create one descriptor per recognized parameter (via the `SdkTypeRegistry`).
-- **Runtime**: For each invocation, the worker reads the values named in `getRequiredFields()` from the invocation data and calls `bind(rawValues)`. This validates the values and returns a new `SdkTypeMetaData`.
+- **Runtime**: For each invocation, the worker reads the values named in `getRequiredFields()` and calls `bind(rawValues)`, which validates them and returns a new `SdkTypeMetaData`.
 
 ### SdkTypeMetaData
 
@@ -114,7 +114,7 @@ public interface SdkTypeHydrator<M extends SdkTypeMetaData> {
 ```java
 public interface SdkTypeFactory {
     SdkTypeDescriptor createDescriptor(String fqcn, Parameter param) throws SdkTypeCreationException;
-    SdkType<?> createSdkType(SdkTypeMetaData metaData) throws Exception;
+    SdkType<?> createSdkType(SdkTypeMetaData metaData) throws SdkTypeCreationException;
 }
 ```
 
@@ -140,29 +140,24 @@ This avoids duplicating the FQCN → `SdkType` logic.
 A typical **BlobClient** pattern:
 
 1. **`BlobClientDescriptor`** implements `SdkTypeDescriptor`. It requires `"ContainerName"`, `"BlobName"` and `"Connection"`, and its `bind` returns a `BlobClientMetaData`.
-2. **`BlobClientMetaData`** implements `SdkTypeMetaData`, storing `containerName`, `blobName`, `connectionEnvVar`. It is immutable.
+2. **`BlobClientMetaData`** implements `SdkTypeMetaData`, storing `containerName`, `blobName`, `connectionEnvVar`.
 3. **`BlobClientCacheKey`** implements `CacheKey`, capturing the fields for caching.
 4. **`BlobClientHydrator`** implements reflection logic for building the client via `BlobClientBuilder`.
 5. **`BlobClientSdkType`** implements `CachableSdkType<BlobClientMetaData>` returning a `buildCacheKey()` from the meta data.
 6. **`BlobClientSdkTypeFactory`** implements `SdkTypeFactory`, creating the descriptor at build time, the `SdkType` at runtime.
-
-`BlobContainerClient` follows the same pattern with `BlobContainerDescriptor` (`"ContainerName"`, `"Connection"`) and `BlobContainerMetaData`.
 
 ---
 
 ## Build-Time vs. Runtime
 
 1. **Build-Time**: The user’s function code is analyzed by the **Maven/Gradle** plugin. If a parameter is recognized (e.g., type `"com.azure.storage.blob.BlobClient"`), we do `registry.createDescriptor(...)` to produce an `SdkTypeDescriptor`.
-2. **Runtime**: The worker keeps the descriptor for the function. For each invocation it collects the required values from the request, calls `descriptor.bind(rawValues)` → `SdkTypeMetaData`, then `registry.createSdkType(metaData)` → `SdkType`. It calls `sdkType.buildInstance()` and **injects** the resulting client into the user function.
+2. **Runtime**: The worker keeps the descriptor for the function. For each invocation it calls `descriptor.bind(rawValues)` → `SdkTypeMetaData`, then `registry.createSdkType(metaData)` → `SdkType`. It calls `sdkType.buildInstance()` and **injects** the resulting client into the user function.
 
 ---
 
 ## Thread Safety
 
-Descriptors and metadata are immutable, so concurrent invocations never share mutable state.
-
-- A descriptor can be shared by any number of threads. `bind(...)` never changes it and returns a new `SdkTypeMetaData` on every call.
-- For one invocation, the `SdkType`, its cache key and the built client are all derived from that invocation's metadata.
+Descriptors and metadata are immutable. A descriptor can be shared by any number of concurrent invocations, and each invocation builds its `SdkType`, cache key and client from its own metadata.
 
 ---
 
