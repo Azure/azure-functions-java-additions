@@ -15,7 +15,6 @@
   - [Example: BlobClient](#example-blobclient)
   - [Build-Time vs. Runtime](#build-time-vs-runtime)
   - [Thread Safety](#thread-safety)
-  - [Migration from 1.x to 2.0](#migration-from-1x-to-20)
   - [Shaded Fallback Libraries](#shaded-fallback-libraries)
 
 ---
@@ -57,10 +56,9 @@ public interface SdkTypeDescriptor {
 }
 ```
 
-- **Purpose**: Describe one SDK parameter of one function. It holds only data that never changes for that function, so it is **immutable** and safe to share across threads.
+- **Purpose**: Describe one SDK parameter of one function. It is immutable and safe to share across threads.
 - **Build Tools**: Create one descriptor per recognized parameter (via the `SdkTypeRegistry`).
-- **Runtime**: For each invocation, the worker reads the values named in `getRequiredFields()` from the invocation data and calls `bind(rawValues)`.
-- **`bind`**: Copies the values, validates them, and returns a **new** immutable `SdkTypeMetaData`. It keeps no reference to the map and no state in the descriptor. It throws `IllegalArgumentException` if `rawValues` is null or a required value is missing or empty.
+- **Runtime**: For each invocation, the worker reads the values named in `getRequiredFields()` from the invocation data and calls `bind(rawValues)`. This validates the values and returns a new `SdkTypeMetaData`.
 
 ### SdkTypeMetaData
 
@@ -71,9 +69,7 @@ public interface SdkTypeMetaData {
 }
 ```
 
-- **Purpose**: The validated values of **one invocation**, produced by `SdkTypeDescriptor.bind(...)`.
-- **Immutable**: There are no setters. Concrete types (for example `BlobClientMetaData`) expose typed getters and are `final` with `final` fields.
-- **Not shared**: A metadata object belongs to the invocation that bound it.
+- **Purpose**: The immutable, validated values of **one invocation**, produced by `SdkTypeDescriptor.bind(...)`.
 
 ### SdkType
 
@@ -89,7 +85,7 @@ public interface SdkType<M extends SdkTypeMetaData> {
 ```
 
 - **Purpose**: A recognized “type” that references its `MetaData` and a `Hydrator`.
-- **Runtime**: The worker calls `buildInstance()` to finalize the client creation. Failures are wrapped in `SdkTypeCreationException`.
+- **Runtime**: The worker calls `buildInstance()` to finalize the client creation.
 
 ### CachableSdkType
 
@@ -101,7 +97,6 @@ public interface CachableSdkType<M extends SdkTypeMetaData> extends SdkType<M> {
 
 - **Purpose**: A **sub-interface** of `SdkType` that supports **caching** via a `CacheKey`.
 - **Why**: Some SDK clients are expensive to recreate each time. This interface allows the Java Worker to store them in a shared cache.
-- The key is built from the same immutable metadata that `buildInstance()` uses, so a cached client always matches its key.
 
 ### SdkTypeHydrator
 
@@ -160,83 +155,16 @@ A typical **BlobClient** pattern:
 1. **Build-Time**: The user’s function code is analyzed by the **Maven/Gradle** plugin. If a parameter is recognized (e.g., type `"com.azure.storage.blob.BlobClient"`), we do `registry.createDescriptor(...)` to produce an `SdkTypeDescriptor`.
 2. **Runtime**: The worker keeps the descriptor for the function. For each invocation it collects the required values from the request, calls `descriptor.bind(rawValues)` → `SdkTypeMetaData`, then `registry.createSdkType(metaData)` → `SdkType`. It calls `sdkType.buildInstance()` and **injects** the resulting client into the user function.
 
-```java
-for (SdkTypeDescriptor descriptor : descriptors) {            // built once per function
-    Map<String, String> raw = collect(descriptor.getRequiredFields(), invocationData);
-    SdkTypeMetaData metaData = descriptor.bind(raw);            // new immutable object per invocation
-    SdkType<?> sdkType = registry.createSdkType(metaData);
-    // use sdkType (cache key, buildInstance) with this invocation's metaData only
-}
-```
-
 ---
 
 ## Thread Safety
 
-Shared state is immutable, so concurrent invocations cannot affect each other.
+Descriptors and metadata are immutable, so concurrent invocations never share mutable state.
 
-- `SdkTypeDescriptor` implementations are immutable and may be shared by any number of threads.
-- `bind(...)` never changes the descriptor. Each call returns a new `SdkTypeMetaData` with its own copy of the values.
-- `SdkTypeMetaData`, `SdkType`, the cache key and the built client for one invocation are all derived from that one metadata object. No setter or shared map sits between them.
-- `SdkParameterAnalysisResult` is immutable. Its list of descriptors is a defensive, unmodifiable copy.
-
-Third-party implementers must keep the same rules. Descriptor and metadata classes should be `final` or otherwise immutable, expose no mutators, and copy any mutable input they accept.
+- A descriptor can be shared by any number of threads. `bind(...)` never changes it and returns a new `SdkTypeMetaData` on every call.
+- For one invocation, the `SdkType`, its cache key and the built client are all derived from that invocation's metadata.
 
 ---
-
-## Migration from 1.x to 2.0
-
-Version 2.0 is a breaking change. Update the library and the code that uses it together.
-
-| 1.x | 2.0 |
-| --- | --- |
-| `SdkTypeMetaData.getRequiredFields()` | `SdkTypeDescriptor.getRequiredFields()` |
-| `SdkTypeMetaData.getFieldValue/setFieldValue/parseAndVerify` | removed. Pass the values to `SdkTypeDescriptor.bind(Map)` |
-| `SdkTypeFactory.createMetaData(fqcn, param)` | `SdkTypeFactory.createDescriptor(fqcn, param)` |
-| `SdkTypeRegistry.createMetaData(fqcn, param)` | `SdkTypeRegistry.createDescriptor(fqcn, param)` |
-| `SdkParameterAnalysisResult()` plus `addSdkTypeMetaData(...)` | `new SdkParameterAnalysisResult(List<SdkTypeDescriptor>)` |
-| `SdkParameterAnalysisResult.getSdkTypesMetaData()` | `getSdkTypeDescriptors()` |
-| `new BlobClientMetaData(fqcn, param)` | `new BlobClientMetaData(fqcn, param, containerName, blobName, connectionEnvVar)` or `BlobClientDescriptor.bind(...)` |
-| `new BlobContainerMetaData(fqcn, param)` | `new BlobContainerMetaData(fqcn, param, containerName, connectionEnvVar)` or `BlobContainerDescriptor.bind(...)` |
-| `SdkType.buildInstance()` called `parseAndVerify()` first | Values are validated when the metadata is created, so `buildInstance()` no longer validates |
-
-`BlobClientMetaData`, `BlobContainerMetaData` and `SdkParameterAnalysisResult` are now `final`.
-
-Before:
-
-```java
-for (SdkTypeMetaData m : result.getSdkTypesMetaData()) {
-    params.add(m.getParam());
-}
-```
-
-After:
-
-```java
-for (SdkTypeDescriptor d : result.getSdkTypeDescriptors()) {
-    params.add(d.getParam());
-}
-```
-
-Runtime, before:
-
-```java
-SdkTypeMetaData md = shared;                 // reused across invocations
-for (String key : md.getRequiredFields()) md.setFieldValue(key, lookup(key));
-md.parseAndVerify();
-SdkType<?> t = registry.createSdkType(md);
-```
-
-Runtime, after:
-
-```java
-Map<String, String> raw = new HashMap<>();
-for (String key : descriptor.getRequiredFields()) raw.put(key, lookup(key));
-SdkTypeMetaData md = descriptor.bind(raw);   // new object, nothing shared
-SdkType<?> t = registry.createSdkType(md);
-```
-
-Other implementers of `SdkTypeMetaData` (for example a Service Bus type) must split their class the same way. Move the fixed data and the required field names into an `SdkTypeDescriptor`, make the metadata class immutable with a validating constructor, implement `bind`, and replace `createMetaData` with `createDescriptor` in the factory.
 
 ## Shaded Fallback Libraries
 
