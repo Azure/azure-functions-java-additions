@@ -78,7 +78,7 @@ public interface SdkType<M extends SdkTypeMetaData> {
     M getMetaData();
     SdkTypeHydrator<M> getHydrator();
 
-    default Object buildInstance() throws SdkTypeCreationException {
+    default Object buildInstance() throws Exception {
         return getHydrator().createInstance(getMetaData());
     }
 }
