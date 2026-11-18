@@ -13,7 +13,7 @@ import java.lang.reflect.Method;
  * potentially throwing SdkHydrationException if reflection or environment
  * variables are invalid. Supports both connection strings and managed identity.
  */
-public class BlobClientHydrator extends BaseBlobHydrator<BlobClientMetaData> {
+public final class BlobClientHydrator extends BaseBlobHydrator<BlobClientMetaData> {
 
     @Override
     protected Object buildWithConnectionString(BlobClientMetaData metaData, String connStr) throws Exception {

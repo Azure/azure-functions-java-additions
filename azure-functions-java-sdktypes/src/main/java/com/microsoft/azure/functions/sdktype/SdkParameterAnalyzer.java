@@ -10,26 +10,27 @@ import com.microsoft.azure.functions.sdktype.exceptions.SdkAnalysisException;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.List;
 
-public class SdkParameterAnalyzer {
+public final class SdkParameterAnalyzer {
     private final SdkTypeRegistry registry = new SdkTypeRegistry();
 
     public SdkParameterAnalysisResult analyze(Method method) {
-        final SdkParameterAnalysisResult result = new SdkParameterAnalysisResult();
+        final List<SdkTypeDescriptor> descriptors = new ArrayList<>();
         for (final Parameter param : method.getParameters()) {
             final String fqcn = param.getType().getName();
             if (registry.isTypeSupported(fqcn)) {
                 try {
-                    final SdkTypeMetaData sdkTypeMetaData = registry.createMetaData(fqcn, param);
-                    result.addSdkTypeMetaData(sdkTypeMetaData);
+                    descriptors.add(registry.createDescriptor(fqcn, param));
                 } catch (Exception ex) {
                     // Wrap the underlying issue in a custom SdkAnalysisException for clarity
-                    throw new SdkAnalysisException("Failed to create metadata for recognized type: " + fqcn, ex);
+                    throw new SdkAnalysisException("Failed to create descriptor for recognized type: " + fqcn, ex);
                 }
             }
         }
 
-        return result;
+        return new SdkParameterAnalysisResult(descriptors);
     }
 
     public SdkTypeRegistry getRegistry() {

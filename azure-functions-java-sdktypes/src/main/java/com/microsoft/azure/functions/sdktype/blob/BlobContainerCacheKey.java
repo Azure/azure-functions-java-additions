@@ -14,7 +14,7 @@ import java.util.Objects;
  * A cache key for the BlobContainerClient scenario.
  * We store containerName + connectionEnvVar from the metaData.
  */
-public class BlobContainerCacheKey implements CacheKey {
+public final class BlobContainerCacheKey implements CacheKey {
     private final String containerName;
     private final String connectionEnvVar;
 

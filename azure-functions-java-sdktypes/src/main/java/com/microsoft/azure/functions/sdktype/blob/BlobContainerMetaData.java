@@ -7,57 +7,40 @@
 package com.microsoft.azure.functions.sdktype.blob;
 
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * MetaData for building a BlobContainerClient, storing fields such as containerName,
- * plus the environment variable name used for connection string or managed identity prefix.
+ * Immutable, validated values of one BlobContainerClient invocation: containerName and
+ * the environment variable name used for connection string or managed identity prefix.
+ * Created by {@link BlobContainerDescriptor#bind(java.util.Map)}. All fields are final,
+ * so an instance can be shared between threads.
  */
-public class BlobContainerMetaData implements BlobMetaData {
-    private final Map<String, Object> rawValues = new HashMap<>();
-
-    private String containerName;
-    private String connectionEnvVar;
+public final class BlobContainerMetaData implements BlobMetaData {
     private final String fqcn;
     private final Parameter param;
+    private final String containerName;
+    private final String connectionEnvVar;
 
-    public BlobContainerMetaData(String fqcn, Parameter param) {
-        this.fqcn = fqcn;
-        this.param = param;
-    }
-
-    @Override
-    public Set<String> getRequiredFields() {
-        // Typically "ContainerName" and "Connection" for the environment variable prefix
-        return new HashSet<>(Arrays.asList("ContainerName", "Connection"));
-    }
-
-    @Override
-    public Object getFieldValue(String key) {
-        return rawValues.get(key);
-    }
-
-    @Override
-    public void setFieldValue(String key, Object value) {
-        rawValues.put(key, value);
-    }
-
-    @Override
-    public void parseAndVerify() {
-        // read fields from rawValues
-        this.containerName = (String) rawValues.get("ContainerName");
-        this.connectionEnvVar = (String) rawValues.get("Connection");
-
+    /**
+     * Creates the metadata and validates that all values are present.
+     *
+     * @param fqcn the fully qualified class name of the SDK type
+     * @param param the parameter of the user function
+     * @param containerName the blob container name
+     * @param connectionEnvVar the environment variable name for the connection
+     * @throws IllegalArgumentException if containerName or connectionEnvVar is null or empty
+     */
+    public BlobContainerMetaData(String fqcn, Parameter param,
+                                 String containerName, String connectionEnvVar) {
         if (containerName == null || containerName.isEmpty()) {
             throw new IllegalArgumentException("containerName is required for BlobContainerClient.");
         }
         if (connectionEnvVar == null || connectionEnvVar.isEmpty()) {
             throw new IllegalArgumentException("connectionEnvVar is required for BlobContainerClient.");
         }
+        this.fqcn = fqcn;
+        this.param = param;
+        this.containerName = containerName;
+        this.connectionEnvVar = connectionEnvVar;
     }
 
     @Override
@@ -75,6 +58,7 @@ public class BlobContainerMetaData implements BlobMetaData {
         return containerName;
     }
 
+    @Override
     public String getConnectionEnvVar() {
         return connectionEnvVar;
     }

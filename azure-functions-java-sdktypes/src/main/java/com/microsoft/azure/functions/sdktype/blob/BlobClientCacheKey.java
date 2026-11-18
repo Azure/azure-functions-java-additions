@@ -12,7 +12,7 @@ import java.util.Objects;
 /**
  * POJO that implements CacheKey for storing BlobClient config.
  */
-public class BlobClientCacheKey implements CacheKey {
+public final class BlobClientCacheKey implements CacheKey {
     private final String containerName;
     private final String blobName;
     private final String envVarForConnection;

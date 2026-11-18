@@ -14,7 +14,7 @@ import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
  * SdkType for building a BlobClient. The parseMetadata method obtains
  * containerName, blobName, and envVarForConnection from the invocation context.
  */
-public class BlobClientSdkType implements CachableSdkType<BlobClientMetaData> {
+public final class BlobClientSdkType implements CachableSdkType<BlobClientMetaData> {
     private final BlobClientHydrator hydrator;
     private final BlobClientMetaData metaData;
 

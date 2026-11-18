@@ -12,20 +12,21 @@ import java.lang.reflect.Parameter;
 
 public interface SdkTypeFactory {
     /**
-     * Called by the build tool's analyzer, returning a minimal SdkTypeMetaData
-     * that references the recognized FQCN internally.
+     * Called by the build tool's analyzer, returning an immutable descriptor
+     * that references the recognized FQCN and parameter. The descriptor is
+     * created once per function and shared by all invocations.
      *
      * @param fqcn the fully qualified class name of the SDK type
      * @param param the parameter being analyzed
-     * @return the created SdkTypeMetaData
+     * @return the created SdkTypeDescriptor
      * @throws com.microsoft.azure.functions.sdktype.exceptions.SdkTypeCreationException
-     *         if something prevents metadata creation (e.g., reflection issues).
+     *         if something prevents descriptor creation (e.g., reflection issues).
      */
-    SdkTypeMetaData createMetaData(String fqcn, Parameter param) throws SdkTypeCreationException;
+    SdkTypeDescriptor createDescriptor(String fqcn, Parameter param) throws SdkTypeCreationException;
 
     /**
-     * Called at runtime in the worker. Takes the already-created metaData
-     * (which has the FQCN or typeId stored) and returns the final SdkType.
+     * Called at runtime in the worker. Takes the immutable metaData of one
+     * invocation (created by {@link SdkTypeDescriptor#bind(java.util.Map)}) and returns the final SdkType.
      *
      * @param metaData the metadata containing configuration details
      * @return the created SdkType
