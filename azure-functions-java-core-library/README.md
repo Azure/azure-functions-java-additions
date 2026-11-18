@@ -14,6 +14,48 @@ For more information about Azure Java Functions please visit the [complete docum
 
 * Java 8
 
+## HTTP response streaming (unreleased)
+
+The proposed `1.4.0` API adds two default methods to
+`HttpResponseMessage.Builder`. Both preserve the body object and delegate to
+`body(Object)`, so existing builder implementations need no new methods.
+
+Use `bodyStream(InputStream)` to forward a stream, or
+`bodyStream(HttpResponseMessage.IOConsumer<OutputStream>)` to produce bytes
+incrementally. For example, inside an HTTP-triggered function:
+
+```java
+return request.createResponseBuilder(HttpStatus.OK)
+    .header("Content-Type", "text/plain; charset=utf-8")
+    .bodyStream(output -> {
+        output.write("first chunk\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        output.flush();
+        output.write("last chunk\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    })
+    .build();
+```
+
+Building a response does not read an input stream or invoke a writer. Keep an
+input stream open after returning the response. The runtime closes streams it
+consumes, even on failure. The caller must close an input stream that is replaced
+or never handed to the runtime. Write synchronously in a callback, do not close
+or retain its output stream, and close any resources opened by the callback.
+Treat streaming bodies as single-use. A typed null delegates to `body(null)`;
+an untyped `bodyStream(null)` is ambiguous, so use `body(null)` to clear a body.
+
+Streaming requires compatible Java worker and host support with HTTP response
+streaming enabled. Adding this library alone does not enable streaming. Older
+workers cannot be assumed to buffer these body types correctly. The worker
+implementation is tracked in
+[Azure/azure-functions-java-worker#877](https://github.com/Azure/azure-functions-java-worker/pull/877).
+Host and intermediary buffering can affect incremental delivery. Errors after
+headers are sent can truncate the response and cannot change its status.
+
+`1.4.0-SNAPSHOT` is a development coordinate for local integration, not a
+published release guarantee. A core library release and downstream dependency
+updates must be coordinated before deployment. Existing `body(Object)` calls
+remain available and are not changed by these default methods.
+
 ## Summary
 
 [Azure Functions Summary](https://github.com/Azure/azure-functions-java-library#summary)
