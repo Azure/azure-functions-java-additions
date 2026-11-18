@@ -6,10 +6,13 @@
 
 package com.microsoft.azure.functions.sdktype.blob;
 
+import com.microsoft.azure.functions.cache.CacheKey;
+import com.microsoft.azure.functions.cache.ObjectCache;
 import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 import com.microsoft.azure.functions.sdktype.exceptions.SdkHydrationException;
 
 import java.lang.reflect.Method;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -20,9 +23,32 @@ import java.util.logging.Logger;
  * This class implements the Template Method pattern, where the overall algorithm
  * structure is defined in createInstance(), but specific steps are delegated to
  * subclass implementations.
+ *
+ * <p>When the hydrator is created with the worker's object cache, the managed identity credential is
+ * built once per connection setting and client ID and shared by every client built with it.
+ * The connection string path never uses the cache.</p>
  */
 public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTypeHydrator<T> {
     protected static final Logger LOGGER = Logger.getLogger(BaseBlobHydrator.class.getName());
+
+    private final ObjectCache<CacheKey, Object> cache;
+
+    /**
+     * Creates a hydrator that builds a new managed identity credential for every client.
+     */
+    public BaseBlobHydrator() {
+        this(null);
+    }
+
+    /**
+     * Creates a hydrator that shares the managed identity credential through the given cache.
+     *
+     * @param cache the cache to share the credential through, usually the view that the registry hands out,
+     *              or null to build a new credential for every client
+     */
+    protected BaseBlobHydrator(ObjectCache<CacheKey, Object> cache) {
+        this.cache = cache;
+    }
 
     /**
      * Implements the SdkTypeHydrator interface method. Extracts the connection environment variable
@@ -35,7 +61,7 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
     @Override
     public Object createInstance(T metaData) throws Exception {
         LOGGER.info("Starting " + this.getClass().getSimpleName() + ".createInstance()");
-        return createInstance(metaData, metaData.getConnectionEnvVar());
+        return createInstance(metaData, metaData.getConnectionEnvVar(), System::getenv);
     }
 
     /**
@@ -44,13 +70,14 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
      * 
      * @param metaData the metadata containing configuration details
      * @param envVar the environment variable name or prefix for authentication
+     * @param env reads an environment variable, null when it is not set
      * @return the built client instance
      * @throws Exception if client creation fails
      */
-    private Object createInstance(T metaData, String envVar) throws Exception {
+    Object createInstance(T metaData, String envVar, Function<String, String> env) throws Exception {
         LOGGER.info("Starting hydration with environment variable: " + envVar);
 
-        final String maybeConnString = System.getenv(envVar);
+        final String maybeConnString = env.apply(envVar);
         
         if (maybeConnString != null && isConnectionString(maybeConnString)) {
             LOGGER.info("Detected connection string usage from environment variable: " + envVar);
@@ -58,15 +85,58 @@ public abstract class BaseBlobHydrator<T extends BlobMetaData> implements SdkTyp
         } else {
             LOGGER.info("Detected Managed Identity usage. Prefix: " + envVar);
 
-            final String accountName = System.getenv(envVar + "__accountName");
-            final String serviceUri = System.getenv(envVar + "__serviceUri");
-            final String blobServiceUri = System.getenv(envVar + "__blobServiceUri");
-            final String clientId = System.getenv(envVar + "__clientId");
+            final String accountName = env.apply(envVar + "__accountName");
+            final String serviceUri = env.apply(envVar + "__serviceUri");
+            final String blobServiceUri = env.apply(envVar + "__blobServiceUri");
+            final String clientId = env.apply(envVar + "__clientId");
 
             final String endpoint = resolveEndpoint(accountName, serviceUri, blobServiceUri);
-            final Object credential = buildManagedIdentityCredential(clientId);
+            final Object credential = getManagedIdentityCredential(envVar, clientId);
 
             return buildWithManagedIdentity(metaData, endpoint, credential);
+        }
+    }
+
+    /**
+     * Returns the managed identity credential of a connection. With a cache it is built once and shared,
+     * without a cache it is built for every call. A failed build is not cached and surfaces unchanged.
+     *
+     * @param envVar the environment variable name or prefix of the connection
+     * @param clientId optional client ID for user-assigned managed identity
+     * @return the DefaultAzureCredential instance
+     * @throws Exception if credential creation fails
+     */
+    private Object getManagedIdentityCredential(String envVar, String clientId) throws Exception {
+        if (cache == null) {
+            return buildManagedIdentityCredential(clientId);
+        }
+        final ManagedIdentityCredentialCacheKey key = new ManagedIdentityCredentialCacheKey(envVar, clientId);
+        try {
+            return cache.computeIfAbsent(ManagedIdentityCredentialCacheKey.class, key, () -> buildSharedCredential(clientId));
+        } catch (RuntimeException e) {
+            // caches wrap the exception of the supplier, hand the original one back to the caller
+            for (Throwable t = e; t != null; t = t.getCause()) {
+                if (t instanceof CredentialBuildFailure) {
+                    throw (Exception) t.getCause();
+                }
+            }
+            throw e;
+        }
+    }
+
+    private Object buildSharedCredential(String clientId) {
+        try {
+            return buildManagedIdentityCredential(clientId);
+        } catch (Exception e) {
+            throw new CredentialBuildFailure(e);
+        }
+    }
+
+    private static final class CredentialBuildFailure extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        CredentialBuildFailure(Exception cause) {
+            super(cause);
         }
     }
 

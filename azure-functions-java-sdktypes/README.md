@@ -121,6 +121,7 @@ public interface SdkTypeFactory {
 - **Purpose**: Provide **two-phase** creation:
     - **Build-Time**: `createDescriptor(...)` for the immutable per-function `SdkTypeDescriptor`.
     - **Runtime**: `createSdkType(...)` from the metadata that `descriptor.bind(...)` returned.
+- **Optional cache overload**: `createSdkType(metaData, cache)` also receives a cache so that the SdkType can share objects between builds. The registry hands it a view of the worker's `ObjectCache` that is bound to the registry's namespace. The view only supports `computeIfAbsent`, so the SdkType cannot read or remove entries of the worker. The default implementation ignores the cache and calls `createSdkType(metaData)`, so existing factories keep working unchanged.
 
 ---
 
@@ -129,7 +130,7 @@ public interface SdkTypeFactory {
 **`SdkTypeRegistry`** holds a map of **FQCN** (e.g., `"com.azure.storage.blob.BlobClient"`) to a **`SdkTypeFactory`**. At:
 
 - **Build-Time**: The analyzer calls `registry.createDescriptor(fqcn, param)` to produce an `SdkTypeDescriptor`.
-- **Runtime**: The worker calls `descriptor.bind(rawValues)` and then `registry.createSdkType(metaData)` to produce a concrete `SdkType`.
+- **Runtime**: The worker calls `descriptor.bind(rawValues)` and then `registry.createSdkType(metaData)` to produce a concrete `SdkType`. Passing the worker's `ObjectCache` as well, `registry.createSdkType(metaData, cache)`, lets the `SdkType` share objects through a view of that cache that is bound to the registry's namespace.
 
 This avoids duplicating the FQCN → `SdkType` logic.
 
@@ -158,6 +159,12 @@ A typical **BlobClient** pattern:
 ## Thread Safety
 
 Descriptors and metadata are immutable. A descriptor can be shared by any number of concurrent invocations, and each invocation builds its `SdkType`, cache key and client from its own metadata.
+
+---
+
+## Shared Managed Identity Credential
+
+When the worker passes its `ObjectCache` (`registry.createSdkType(metaData, cache)`), the Blob hydrators build the managed identity credential once per connection setting and client id, and reuse it for every blob and container client built from that setting. The hydrators see the cache only through the namespace view of the registry. They can add their own entries, which hold no secret and are keyed by the setting name and client id only (`ManagedIdentityCredentialCacheKey`), but cannot read, remove or manage the entries of the worker. The worker keeps control of the size, the expiry and the reference strength of the cache. A failed build is not cached. The connection string path is unchanged, and without a cache the hydrators behave as before.
 
 ---
 

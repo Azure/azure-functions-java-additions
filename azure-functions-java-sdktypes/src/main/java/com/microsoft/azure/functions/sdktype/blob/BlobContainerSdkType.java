@@ -18,8 +18,12 @@ public final class BlobContainerSdkType implements CachableSdkType<BlobContainer
     private final BlobContainerHydrator hydrator;
 
     public BlobContainerSdkType(BlobContainerMetaData metaData) {
+        this(metaData, new BlobContainerHydrator());
+    }
+
+    public BlobContainerSdkType(BlobContainerMetaData metaData, BlobContainerHydrator hydrator) {
         this.metaData = metaData;
-        this.hydrator = new BlobContainerHydrator();
+        this.hydrator = hydrator;
     }
 
     @Override
