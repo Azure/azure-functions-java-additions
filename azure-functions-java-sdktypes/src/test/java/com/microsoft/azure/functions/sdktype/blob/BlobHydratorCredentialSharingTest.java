@@ -11,6 +11,8 @@ import com.microsoft.azure.functions.sdktype.SdkTypeDescriptor;
 import com.microsoft.azure.functions.sdktype.SdkTypeFactory;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
 import com.microsoft.azure.functions.sdktype.SdkTypeRegistry;
+import com.microsoft.azure.functions.sdktype.exceptions.SdkHydrationException;
+import com.microsoft.azure.functions.sdktype.exceptions.SdkTypeCreationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests the real hydrators and the way the registry and the factories hand the cache to them.
@@ -165,6 +168,19 @@ class BlobHydratorCredentialSharingTest {
         return env;
     }
 
+    private static FakeClient hydrateBlob(SdkTypeRegistry registry, FakeObjectCache cache, BlobClientMetaData meta,
+            Map<String, String> env) throws Exception {
+        final BlobClientHydrator hydrator = (BlobClientHydrator) registry.createSdkType(meta, cache).getHydrator();
+        return (FakeClient) hydrator.createInstance(meta, CONN, env::get);
+    }
+
+    private static FakeClient hydrateContainer(SdkTypeRegistry registry, FakeObjectCache cache,
+            BlobContainerMetaData meta, Map<String, String> env) throws Exception {
+        final BlobContainerHydrator hydrator =
+                (BlobContainerHydrator) registry.createSdkType(meta, cache).getHydrator();
+        return (FakeClient) hydrator.createInstance(meta, CONN, env::get);
+    }
+
     @BeforeEach
     void useFakeSdkLoader() {
         FakeIdentityBuilder.BUILDS.set(0);
@@ -227,7 +243,8 @@ class BlobHydratorCredentialSharingTest {
         containerHydrator.createInstance(containerMeta, CONN, env::get);
 
         assertEquals(1, FakeIdentityBuilder.BUILDS.get());
-        assertEquals(1, cache.size());
+        // one credential, three blob clients and one container client, all in the one namespace of the registry
+        assertEquals(5, cache.size());
         assertEquals(Collections.<Class<?>>singleton(SdkTypeRegistry.class), cache.namespaces());
     }
 
@@ -247,7 +264,56 @@ class BlobHydratorCredentialSharingTest {
 
         assertEquals(1, FakeIdentityBuilder.BUILDS.get());
         assertNotSame(foreign, client.credential);
-        assertEquals(2, cache.size());
+        // the planted entry, the credential of the hydrator and its client
+        assertEquals(3, cache.size());
+    }
+
+    @Test
+    void equalMetadataGivesTheSameClientAndOtherMetadataItsOwn() throws Exception {
+        final SdkTypeRegistry registry = new SdkTypeRegistry();
+        final FakeObjectCache cache = new FakeObjectCache(true);
+        final Map<String, String> env = env();
+
+        final FakeClient one = hydrateBlob(registry, cache, blobMeta("one"), env);
+        final FakeClient oneAgain = hydrateBlob(registry, cache, blobMeta("one"), env);
+        final FakeClient two = hydrateBlob(registry, cache, blobMeta("two"), env);
+        final FakeClient inOtherContainer = hydrateBlob(registry, cache,
+                new BlobClientMetaData("com.azure.storage.blob.BlobClient", null, "other", "one", CONN), env);
+        final FakeClient container = hydrateContainer(registry, cache, containerMeta(), env);
+        final FakeClient containerAgain = hydrateContainer(registry, cache, containerMeta(), env);
+        final FakeClient otherContainer = hydrateContainer(registry, cache,
+                new BlobContainerMetaData("com.azure.storage.blob.BlobContainerClient", null, "other", CONN), env);
+
+        assertSame(one, oneAgain);
+        assertNotSame(one, two);
+        assertNotSame(one, inOtherContainer);
+        assertNotSame(one, container);
+        assertSame(container, containerAgain);
+        assertNotSame(container, otherContainer);
+        assertEquals("one", one.blobName);
+        assertEquals("two", two.blobName);
+        assertEquals("other", inOtherContainer.containerName);
+        assertEquals("container", container.containerName);
+        assertEquals("other", otherContainer.containerName);
+        assertNull(container.blobName);
+        assertEquals(1, FakeIdentityBuilder.BUILDS.get());
+        // one credential, three blob clients and two container clients
+        assertEquals(6, cache.size());
+    }
+
+    @Test
+    void aFailedBuildSurfacesAsAnSdkTypeCreationExceptionAndIsNotCached() throws Exception {
+        final SdkTypeRegistry registry = new SdkTypeRegistry();
+        final FakeObjectCache cache = new FakeObjectCache(true);
+        // the real environment has no such setting, so the hydration fails at the missing endpoint
+        final SdkType<?> sdkType = registry.createSdkType(blobMeta("one"), cache);
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            final SdkTypeCreationException e = assertThrows(SdkTypeCreationException.class, sdkType::buildInstance);
+            assertSame(SdkHydrationException.class, e.getCause().getClass());
+            assertEquals(0, cache.size());
+        }
+        assertEquals(0, FakeIdentityBuilder.BUILDS.get());
     }
 
     @Test
@@ -255,26 +321,26 @@ class BlobHydratorCredentialSharingTest {
         final SdkTypeRegistry registry = new SdkTypeRegistry();
         final Map<String, String> env = env();
 
-        for (String blobName : new String[] {"one", "two"}) {
-            final BlobClientMetaData meta = blobMeta(blobName);
-            final BlobClientHydrator hydrator = (BlobClientHydrator) registry.createSdkType(meta, null).getHydrator();
-            hydrator.createInstance(meta, CONN, env::get);
-        }
+        final FakeClient first = hydrateBlob(registry, null, blobMeta("one"), env);
+        final FakeClient second = hydrateBlob(registry, null, blobMeta("one"), env);
 
+        assertNotSame(first, second);
+        assertNotSame(first.credential, second.credential);
         assertEquals(2, FakeIdentityBuilder.BUILDS.get());
     }
 
     @Test
-    void registryWithoutCacheKeepsBuildingACredentialPerClient() throws Exception {
+    void registryWithoutCacheKeepsBuildingAClientAndACredentialPerCall() throws Exception {
         final SdkTypeRegistry registry = new SdkTypeRegistry();
         final Map<String, String> env = env();
 
-        for (String blobName : new String[] {"one", "two"}) {
-            final BlobClientMetaData meta = blobMeta(blobName);
-            final BlobClientHydrator hydrator = (BlobClientHydrator) registry.createSdkType(meta).getHydrator();
-            hydrator.createInstance(meta, CONN, env::get);
-        }
+        final BlobClientMetaData meta = blobMeta("one");
+        final BlobClientHydrator first = (BlobClientHydrator) registry.createSdkType(meta).getHydrator();
+        final BlobClientHydrator second = (BlobClientHydrator) registry.createSdkType(meta).getHydrator();
+        final FakeClient firstClient = (FakeClient) first.createInstance(meta, CONN, env::get);
+        final FakeClient secondClient = (FakeClient) second.createInstance(meta, CONN, env::get);
 
+        assertNotSame(firstClient, secondClient);
         assertEquals(2, FakeIdentityBuilder.BUILDS.get());
     }
 

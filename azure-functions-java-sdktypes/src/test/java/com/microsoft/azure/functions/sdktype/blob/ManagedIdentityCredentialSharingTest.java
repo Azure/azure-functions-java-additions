@@ -35,27 +35,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests how the hydrators share the managed identity credential through the cache of the worker.
+ * Tests how the hydrators cache the managed identity credential and, when they have an instance key, their clients,
+ * through the cache of the worker.
  */
 class ManagedIdentityCredentialSharingTest {
     private static final String CONN = "SHARED_RES_CONN";
     private static final BlobClientMetaData META = blobMeta("blob");
 
-    /** Namespace of the middleware of the worker, which caches the built clients. */
-    private static final class WorkerNamespace {
-    }
-
     private static final class Builds {
         final AtomicInteger count = new AtomicInteger();
+        final AtomicInteger clients = new AtomicInteger();
         final List<String> clientIds = Collections.synchronizedList(new ArrayList<String>());
         volatile Exception failure;
+        volatile Exception clientFailure;
     }
 
     private static final class Client {
+        final String blobName;
         final String endpoint;
         final Object credential;
 
-        Client(String endpoint, Object credential) {
+        Client(String blobName, String endpoint, Object credential) {
+            this.blobName = blobName;
             this.endpoint = endpoint;
             this.credential = credential;
         }
@@ -63,10 +64,21 @@ class ManagedIdentityCredentialSharingTest {
 
     private static final class RecordingHydrator extends BaseBlobHydrator<BlobClientMetaData> {
         private final Builds builds;
+        private final boolean cacheClients;
 
         RecordingHydrator(ObjectCache<CacheKey, Object> cache, Builds builds) {
+            this(cache, builds, false);
+        }
+
+        RecordingHydrator(ObjectCache<CacheKey, Object> cache, Builds builds, boolean cacheClients) {
             super(cache);
             this.builds = builds;
+            this.cacheClients = cacheClients;
+        }
+
+        @Override
+        protected CacheKey instanceKey(BlobClientMetaData metaData) {
+            return cacheClients ? new BlobClientCacheKey(metaData) : null;
         }
 
         @Override
@@ -80,13 +92,23 @@ class ManagedIdentityCredentialSharingTest {
         }
 
         @Override
-        protected Object buildWithManagedIdentity(BlobClientMetaData metaData, String endpoint, Object credential) {
-            return new Client(endpoint, credential);
+        protected Object buildWithManagedIdentity(BlobClientMetaData metaData, String endpoint, Object credential)
+                throws Exception {
+            return newClient(metaData, endpoint, credential);
         }
 
         @Override
-        protected Object buildWithConnectionString(BlobClientMetaData metaData, String connectionString) {
-            return new Client(connectionString, null);
+        protected Object buildWithConnectionString(BlobClientMetaData metaData, String connectionString)
+                throws Exception {
+            return newClient(metaData, connectionString, null);
+        }
+
+        private Client newClient(BlobClientMetaData metaData, String endpoint, Object credential) throws Exception {
+            builds.clients.incrementAndGet();
+            if (builds.clientFailure != null) {
+                throw builds.clientFailure;
+            }
+            return new Client(metaData.getBlobName(), endpoint, credential);
         }
     }
 
@@ -122,6 +144,8 @@ class ManagedIdentityCredentialSharingTest {
         assertSame(first.credential, second.credential);
         assertSame(first.credential, third.credential);
         assertEquals("https://acct.blob.core.windows.net", first.endpoint);
+        // without an instance key only the credential is cached
+        assertEquals(1, cache.size());
     }
 
     @Test
@@ -162,7 +186,7 @@ class ManagedIdentityCredentialSharingTest {
     }
 
     @Test
-    void connectionStringPathNeverTouchesTheCache() throws Exception {
+    void connectionStringPathBuildsNoCredential() throws Exception {
         final FakeObjectCache cache = new FakeObjectCache(true);
         final Builds builds = new Builds();
         final Map<String, String> env = new HashMap<>();
@@ -173,6 +197,22 @@ class ManagedIdentityCredentialSharingTest {
         assertNull(client.credential);
         assertEquals(0, cache.calls());
         assertEquals(0, builds.count.get());
+    }
+
+    @Test
+    void connectionStringClientIsCachedUnderItsInstanceKey() throws Exception {
+        final FakeObjectCache cache = new FakeObjectCache(true);
+        final Builds builds = new Builds();
+        final Map<String, String> env = new HashMap<>();
+        env.put(CONN, "DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=fake-key-for-tests");
+
+        final Client first = hydrate(new RecordingHydrator(cache, builds, true), env);
+        final Client second = hydrate(new RecordingHydrator(cache, builds, true), env);
+
+        assertSame(first, second);
+        assertEquals(1, builds.clients.get());
+        assertEquals(0, builds.count.get());
+        assertEquals(1, cache.size());
     }
 
     @Test
@@ -208,6 +248,29 @@ class ManagedIdentityCredentialSharingTest {
     }
 
     @Test
+    void aFailedClientBuildIsNotCachedAndKeepsTheCredential() throws Exception {
+        final FakeObjectCache cache = new FakeObjectCache(true);
+        final Builds builds = new Builds();
+        final Map<String, String> env = managedIdentityEnv(null);
+
+        builds.clientFailure = new IllegalStateException("client build failed");
+        final Exception thrown = assertThrows(IllegalStateException.class,
+                () -> hydrate(new RecordingHydrator(cache, builds, true), env));
+        assertSame(builds.clientFailure, thrown);
+        // the credential was built and cached, the failed client was not
+        assertEquals(1, cache.size());
+
+        builds.clientFailure = null;
+        final Client recovered = hydrate(new RecordingHydrator(cache, builds, true), env);
+        final Client again = hydrate(new RecordingHydrator(cache, builds, true), env);
+
+        assertSame(recovered, again);
+        assertEquals(1, builds.count.get());
+        assertEquals(2, builds.clients.get());
+        assertEquals(2, cache.size());
+    }
+
+    @Test
     void theOriginalExceptionSurfacesWithAndWithoutCache() {
         final Exception[] failures = {
             new ClassNotFoundException("missing"),
@@ -219,13 +282,16 @@ class ManagedIdentityCredentialSharingTest {
         caches.add(new FakeObjectCache(false));
         caches.add(null);
 
+        // the credential is built inside the cache lookup of the client when the hydrator caches clients
         for (ObjectCache<CacheKey, Object> cache : caches) {
-            for (Exception failure : failures) {
-                final Builds builds = new Builds();
-                builds.failure = failure;
-                final Exception thrown = assertThrows(Exception.class,
-                        () -> hydrate(new RecordingHydrator(cache, builds), managedIdentityEnv(null)));
-                assertSame(failure, thrown);
+            for (boolean cacheClients : new boolean[] {false, true}) {
+                for (Exception failure : failures) {
+                    final Builds builds = new Builds();
+                    builds.failure = failure;
+                    final Exception thrown = assertThrows(Exception.class,
+                            () -> hydrate(new RecordingHydrator(cache, builds, cacheClients), managedIdentityEnv(null)));
+                    assertSame(failure, thrown);
+                }
             }
         }
     }
@@ -240,6 +306,19 @@ class ManagedIdentityCredentialSharingTest {
 
         assertEquals(2, builds.count.get());
         assertNotSame(first.credential, second.credential);
+    }
+
+    @Test
+    void withoutCacheNothingIsCachedEvenWithAnInstanceKey() throws Exception {
+        final Builds builds = new Builds();
+        final Map<String, String> env = managedIdentityEnv(null);
+
+        final Client first = hydrate(new RecordingHydrator(null, builds, true), env);
+        final Client second = hydrate(new RecordingHydrator(null, builds, true), env);
+
+        assertNotSame(first, second);
+        assertEquals(2, builds.clients.get());
+        assertEquals(2, builds.count.get());
     }
 
     @Test
@@ -270,25 +349,27 @@ class ManagedIdentityCredentialSharingTest {
     }
 
     @Test
-    void worksInsideTheCacheLookupOfTheWorkerClient() {
+    void theHydratorCachesTheClientNextToTheCredential() throws Exception {
         final FakeObjectCache cache = new FakeObjectCache(true);
         final Builds builds = new Builds();
         final Map<String, String> env = managedIdentityEnv(null);
 
-        for (BlobClientMetaData meta : Arrays.asList(blobMeta("one"), blobMeta("two"), blobMeta("one"))) {
-            final Object client = cache.computeIfAbsent(WorkerNamespace.class, new BlobClientCacheKey(meta), () -> {
-                try {
-                    return new RecordingHydrator(cache, builds).createInstance(meta, CONN, env::get);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            assertNotNull(client);
-        }
+        final Client one = (Client) new RecordingHydrator(cache, builds, true)
+                .createInstance(blobMeta("one"), CONN, env::get);
+        final Client two = (Client) new RecordingHydrator(cache, builds, true)
+                .createInstance(blobMeta("two"), CONN, env::get);
+        final Client oneAgain = (Client) new RecordingHydrator(cache, builds, true)
+                .createInstance(blobMeta("one"), CONN, env::get);
 
+        assertSame(one, oneAgain);
+        assertNotSame(one, two);
+        assertSame(one.credential, two.credential);
+        assertEquals("one", one.blobName);
+        assertEquals("two", two.blobName);
         assertEquals(1, builds.count.get());
+        assertEquals(2, builds.clients.get());
         assertEquals(3, cache.size());
-        assertTrue(cache.namespaces().contains(WorkerNamespace.class));
+        assertTrue(cache.namespaces().contains(BlobClientCacheKey.class));
         assertTrue(cache.namespaces().contains(ManagedIdentityCredentialCacheKey.class));
     }
 

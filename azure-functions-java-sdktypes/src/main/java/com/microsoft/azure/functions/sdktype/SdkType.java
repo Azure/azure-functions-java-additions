@@ -10,9 +10,12 @@ package com.microsoft.azure.functions.sdktype;
  * A recognized SDK type that:
  *   - Holds the immutable metadata of one invocation
  *   - Has a reference to a hydrator
- *   - Can produce a CacheKey (if needed)
  *   - Has default method buildInstance() that calls the hydrator
  *     with the metaData.
+ *
+ * <p>An SdkType decides for itself whether anything is cached. The worker hands its object cache to the
+ * factory, see {@link SdkTypeFactory#createSdkType(SdkTypeMetaData, com.microsoft.azure.functions.cache.ObjectCache)},
+ * and always calls {@link #buildInstance()}. A type that needs no cache just does not use the one it is given.</p>
  *
  * <p>The metadata is already validated by {@link SdkTypeDescriptor#bind(java.util.Map)}
  * and is immutable, so an SdkType is safe to share between threads as long as its

@@ -1,7 +1,6 @@
 package com.microsoft.azure.functions.sdktype.tests;
 
 import com.microsoft.azure.functions.cache.CacheKey;
-import com.microsoft.azure.functions.sdktype.CachableSdkType;
 import com.microsoft.azure.functions.sdktype.SdkType;
 import com.microsoft.azure.functions.sdktype.SdkTypeDescriptor;
 import com.microsoft.azure.functions.sdktype.SdkTypeMetaData;
@@ -167,19 +166,24 @@ class BlobClientDescriptorTest {
     }
 
     @Test
-    void cacheKeyAndBuiltTypeComeFromTheBoundValues() throws Exception {
+    void instanceKeyAndBuiltTypeComeFromTheBoundValues() throws Exception {
         final SdkTypeDescriptor descriptor = new BlobClientDescriptor(FQCN, blobParameter());
         final SdkTypeRegistry registry = new SdkTypeRegistry();
+        final RecordingObjectCache firstCache = new RecordingObjectCache();
+        final RecordingObjectCache secondCache = new RecordingObjectCache();
 
         final SdkTypeMetaData first = descriptor.bind(raw("c1", "b1", "CONN1"));
         final SdkTypeMetaData second = descriptor.bind(raw("c2", "b2", "CONN2"));
-        final SdkType<?> firstType = registry.createSdkType(first);
-        final SdkType<?> secondType = registry.createSdkType(second);
+        final SdkType<?> firstType = registry.createSdkType(first, firstCache);
+        final SdkType<?> secondType = registry.createSdkType(second, secondCache);
 
         assertSame(first, firstType.getMetaData());
         assertSame(second, secondType.getMetaData());
-        final CacheKey firstKey = ((CachableSdkType<?>) firstType).buildCacheKey();
-        final CacheKey secondKey = ((CachableSdkType<?>) secondType).buildCacheKey();
+        // the type caches its own instance, so its key shows up in the cache lookup of buildInstance()
+        assertSame(RecordingObjectCache.MARKER, firstType.buildInstance());
+        assertSame(RecordingObjectCache.MARKER, secondType.buildInstance());
+        final CacheKey firstKey = firstCache.key();
+        final CacheKey secondKey = secondCache.key();
         assertEquals(new BlobClientCacheKey((BlobClientMetaData) first), firstKey);
         assertEquals(new BlobClientCacheKey((BlobClientMetaData) second), secondKey);
         assertNotEquals(firstKey, secondKey);
@@ -208,8 +212,10 @@ class BlobClientDescriptorTest {
                             final String connection = "CONN_" + id + "_" + i;
 
                             final SdkTypeMetaData bound = shared.bind(raw(container, blob, connection));
-                            final SdkType<?> sdkType = registry.createSdkType(bound);
-                            final CacheKey key = ((CachableSdkType<?>) sdkType).buildCacheKey();
+                            final RecordingObjectCache cache = new RecordingObjectCache();
+                            final SdkType<?> sdkType = registry.createSdkType(bound, cache);
+                            sdkType.buildInstance();
+                            final CacheKey key = cache.key();
                             final BlobClientMetaData seen = (BlobClientMetaData) sdkType.getMetaData();
 
                             final BlobClientCacheKey expectedKey = new BlobClientCacheKey(

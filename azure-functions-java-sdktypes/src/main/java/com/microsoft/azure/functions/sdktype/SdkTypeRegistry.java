@@ -61,6 +61,8 @@ public final class SdkTypeRegistry {
 
     /**
      * Runtime usage: produce the final SdkType from the immutable metaData of one invocation.
+     * The type has no cache, so it builds a new instance every time. Use
+     * {@link #createSdkType(SdkTypeMetaData, ObjectCache)} to let it cache what it builds.
      *
      * @param metaData the metadata containing configuration details
      * @return the created SdkType
@@ -71,8 +73,9 @@ public final class SdkTypeRegistry {
     }
 
     /**
-     * Runtime usage: like {@link #createSdkType(SdkTypeMetaData)}, and also lets the SdkType share expensive
-     * objects, such as a credential, between builds through the worker's object cache.
+     * Runtime usage: like {@link #createSdkType(SdkTypeMetaData)}, and also lets the SdkType cache what it builds,
+     * such as its client or a credential that its clients share, through the worker's object cache. The worker then
+     * only calls {@code buildInstance()}, and each SdkType decides for itself what is cached.
      *
      * <p>The factory is not given the cache itself but a view that is bound to the namespace of this registry.
      * The view supports only {@code computeIfAbsent}, so an SdkType can use the cache for its own objects but
@@ -80,7 +83,7 @@ public final class SdkTypeRegistry {
      * the expiry and the reference strength.</p>
      *
      * @param metaData the metadata containing configuration details
-     * @param cache the worker's object cache, or null to share nothing
+     * @param cache the worker's object cache, or null to cache nothing
      * @return the created SdkType
      * @throws Exception if SdkType creation fails
      */

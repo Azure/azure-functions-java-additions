@@ -19,19 +19,25 @@ import java.lang.reflect.Method;
 public final class BlobContainerHydrator extends BaseBlobHydrator<BlobContainerMetaData> {
 
     /**
-     * Creates a hydrator that builds a new managed identity credential for every client.
+     * Creates a hydrator that caches nothing. Every call builds a new client and a new managed identity credential.
      */
     public BlobContainerHydrator() {
         super();
     }
 
     /**
-     * Creates a hydrator that shares the managed identity credential through the given cache.
+     * Creates a hydrator that caches the clients it builds, and the managed identity credential that they share,
+     * through the given cache.
      *
-     * @param cache the worker's object cache, or null to build a new credential for every client
+     * @param cache the worker's object cache, or null to cache nothing
      */
     public BlobContainerHydrator(ObjectCache<CacheKey, Object> cache) {
         super(cache);
+    }
+
+    @Override
+    protected CacheKey instanceKey(BlobContainerMetaData metaData) {
+        return new BlobContainerCacheKey(metaData);
     }
 
     @Override

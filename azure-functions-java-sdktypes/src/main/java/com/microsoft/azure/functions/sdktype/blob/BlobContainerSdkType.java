@@ -6,14 +6,13 @@
 
 package com.microsoft.azure.functions.sdktype.blob;
 
-import com.microsoft.azure.functions.cache.CacheKey;
-import com.microsoft.azure.functions.sdktype.CachableSdkType;
+import com.microsoft.azure.functions.sdktype.SdkType;
 import com.microsoft.azure.functions.sdktype.SdkTypeHydrator;
 
 /**
- * Cachable SdkType for building a BlobContainerClient.
+ * SdkType for building a BlobContainerClient.
  */
-public final class BlobContainerSdkType implements CachableSdkType<BlobContainerMetaData> {
+public final class BlobContainerSdkType implements SdkType<BlobContainerMetaData> {
     private final BlobContainerMetaData metaData;
     private final BlobContainerHydrator hydrator;
 
@@ -34,10 +33,5 @@ public final class BlobContainerSdkType implements CachableSdkType<BlobContainer
     @Override
     public SdkTypeHydrator<BlobContainerMetaData> getHydrator() {
         return hydrator;
-    }
-
-    @Override
-    public CacheKey buildCacheKey() {
-        return new BlobContainerCacheKey(metaData);
     }
 }
