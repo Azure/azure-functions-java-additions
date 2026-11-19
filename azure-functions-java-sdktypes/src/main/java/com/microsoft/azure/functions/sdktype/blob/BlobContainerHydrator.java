@@ -6,6 +6,9 @@
 
 package com.microsoft.azure.functions.sdktype.blob;
 
+import com.microsoft.azure.functions.cache.CacheKey;
+import com.microsoft.azure.functions.cache.ObjectCache;
+
 import java.lang.reflect.Method;
 
 /**
@@ -14,6 +17,28 @@ import java.lang.reflect.Method;
  * Supports both connection string usage and managed identity usage.
  */
 public final class BlobContainerHydrator extends BaseBlobHydrator<BlobContainerMetaData> {
+
+    /**
+     * Creates a hydrator that caches nothing. Every call builds a new client and a new managed identity credential.
+     */
+    public BlobContainerHydrator() {
+        super();
+    }
+
+    /**
+     * Creates a hydrator that caches the clients it builds, and the managed identity credential that they share,
+     * through the given cache.
+     *
+     * @param cache the worker's object cache, or null to cache nothing
+     */
+    public BlobContainerHydrator(ObjectCache<CacheKey, Object> cache) {
+        super(cache);
+    }
+
+    @Override
+    protected CacheKey instanceKey(BlobContainerMetaData metaData) {
+        return new BlobContainerCacheKey(metaData);
+    }
 
     @Override
     protected Object buildWithConnectionString(BlobContainerMetaData metaData, String connStr) throws Exception {

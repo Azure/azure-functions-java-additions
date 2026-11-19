@@ -8,13 +8,13 @@
     - [SdkTypeDescriptor](#sdktypedescriptor)
     - [SdkTypeMetaData](#sdktypemetadata)
     - [SdkType](#sdktype)
-    - [CachableSdkType](#cachablesdktype)
     - [SdkTypeHydrator](#sdktypehydrator)
     - [SdkTypeFactory](#sdktypefactory)
   - [Registry](#registry)
   - [Example: BlobClient](#example-blobclient)
   - [Build-Time vs. Runtime](#build-time-vs-runtime)
   - [Thread Safety](#thread-safety)
+  - [Caching](#caching)
   - [Shaded Fallback Libraries](#shaded-fallback-libraries)
 
 ---
@@ -86,17 +86,7 @@ public interface SdkType<M extends SdkTypeMetaData> {
 
 - **Purpose**: A recognized “type” that references its `MetaData` and a `Hydrator`.
 - **Runtime**: The worker calls `buildInstance()` to finalize the client creation.
-
-### CachableSdkType
-
-```java
-public interface CachableSdkType<M extends SdkTypeMetaData> extends SdkType<M> {
-    CacheKey buildCacheKey();
-}
-```
-
-- **Purpose**: A **sub-interface** of `SdkType` that supports **caching** via a `CacheKey`.
-- **Why**: Some SDK clients are expensive to recreate each time. This interface allows the Java Worker to store them in a shared cache.
+- **Caching**: The `SdkType` decides for itself whether anything is cached, see [Caching](#caching). The worker has no cache logic of its own around `buildInstance()`.
 
 ### SdkTypeHydrator
 
@@ -121,6 +111,7 @@ public interface SdkTypeFactory {
 - **Purpose**: Provide **two-phase** creation:
     - **Build-Time**: `createDescriptor(...)` for the immutable per-function `SdkTypeDescriptor`.
     - **Runtime**: `createSdkType(...)` from the metadata that `descriptor.bind(...)` returned.
+- **Optional cache overload**: `createSdkType(metaData, cache)` also receives a cache so that the SdkType can cache what it builds, such as its client or a credential that its clients share. The registry hands it a view of the worker's `ObjectCache` that is bound to the registry's namespace. The view only supports `computeIfAbsent`, so the SdkType cannot read or remove entries of the worker. The default implementation ignores the cache and calls `createSdkType(metaData)`, so existing factories keep working unchanged.
 
 ---
 
@@ -129,7 +120,7 @@ public interface SdkTypeFactory {
 **`SdkTypeRegistry`** holds a map of **FQCN** (e.g., `"com.azure.storage.blob.BlobClient"`) to a **`SdkTypeFactory`**. At:
 
 - **Build-Time**: The analyzer calls `registry.createDescriptor(fqcn, param)` to produce an `SdkTypeDescriptor`.
-- **Runtime**: The worker calls `descriptor.bind(rawValues)` and then `registry.createSdkType(metaData)` to produce a concrete `SdkType`.
+- **Runtime**: The worker calls `descriptor.bind(rawValues)` and then `registry.createSdkType(metaData, cache)` with its `ObjectCache` to produce a concrete `SdkType`. The `SdkType` caches what it wants through a view of that cache that is bound to the registry's namespace. `registry.createSdkType(metaData)` builds an `SdkType` without a cache.
 
 This avoids duplicating the FQCN → `SdkType` logic.
 
@@ -141,9 +132,9 @@ A typical **BlobClient** pattern:
 
 1. **`BlobClientDescriptor`** implements `SdkTypeDescriptor`. It requires `"ContainerName"`, `"BlobName"` and `"Connection"`, and its `bind` returns a `BlobClientMetaData`.
 2. **`BlobClientMetaData`** implements `SdkTypeMetaData`, storing `containerName`, `blobName`, `connectionEnvVar`.
-3. **`BlobClientCacheKey`** implements `CacheKey`, capturing the fields for caching.
-4. **`BlobClientHydrator`** implements reflection logic for building the client via `BlobClientBuilder`.
-5. **`BlobClientSdkType`** implements `CachableSdkType<BlobClientMetaData>` returning a `buildCacheKey()` from the meta data.
+3. **`BlobClientCacheKey`** implements `CacheKey`, capturing the fields that the hydrator caches the client under.
+4. **`BlobClientHydrator`** implements reflection logic for building the client via `BlobClientBuilder`, and caches the client and the managed identity credential through the cache it is given.
+5. **`BlobClientSdkType`** implements `SdkType<BlobClientMetaData>`.
 6. **`BlobClientSdkTypeFactory`** implements `SdkTypeFactory`, creating the descriptor at build time, the `SdkType` at runtime.
 
 ---
@@ -151,13 +142,26 @@ A typical **BlobClient** pattern:
 ## Build-Time vs. Runtime
 
 1. **Build-Time**: The user’s function code is analyzed by the **Maven/Gradle** plugin. If a parameter is recognized (e.g., type `"com.azure.storage.blob.BlobClient"`), we do `registry.createDescriptor(...)` to produce an `SdkTypeDescriptor`.
-2. **Runtime**: The worker keeps the descriptor for the function. For each invocation it calls `descriptor.bind(rawValues)` → `SdkTypeMetaData`, then `registry.createSdkType(metaData)` → `SdkType`. It calls `sdkType.buildInstance()` and **injects** the resulting client into the user function.
+2. **Runtime**: The worker keeps the descriptor for the function. For each invocation it calls `descriptor.bind(rawValues)` → `SdkTypeMetaData`, then `registry.createSdkType(metaData, cache)` → `SdkType`. It calls `sdkType.buildInstance()` and **injects** the resulting client into the user function.
 
 ---
 
 ## Thread Safety
 
 Descriptors and metadata are immutable. A descriptor can be shared by any number of concurrent invocations, and each invocation builds its `SdkType`, cache key and client from its own metadata.
+
+---
+
+## Caching
+
+An `SdkType` decides for itself whether anything is cached. The worker passes its `ObjectCache` to `registry.createSdkType(metaData, cache)` and always calls `buildInstance()`. The factory gets the cache through a view that is bound to the namespace of the registry. The view only supports `computeIfAbsent`, so an `SdkType` can cache what it builds but cannot read, remove or manage the entries of the worker. The worker keeps control of the size, the expiry and the reference strength of the cache. Without a cache, nothing is cached.
+
+The Blob hydrators cache two things.
+
+- **The client**, under `BlobClientCacheKey` or `BlobContainerCacheKey`, which hold the container, the blob and the connection setting. A hydrator that wants no instance caching keeps the default `instanceKey`, which returns null.
+- **The managed identity credential**, built once per connection setting and client id (`ManagedIdentityCredentialCacheKey`) and reused for every blob and container client built from that setting.
+
+The keys hold setting names only, never a secret and never a value of one invocation. A failed build is not cached and surfaces unchanged. The connection string path never builds a credential.
 
 ---
 
