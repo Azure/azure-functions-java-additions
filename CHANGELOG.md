@@ -1,3 +1,8 @@
+## azure-functions-java-core-library (Unreleased)
+
+### New
+* Added `HttpMethod.QUERY` for HTTP QUERY triggers and case-insensitive method parsing.
+
 ## azure-functions-java-spi_1.0.0
 
 ### New
